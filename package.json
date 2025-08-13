@@ -1,0 +1,9 @@
+{
+  "name": "trojan-backend",
+  "version": "1.0.0",
+  "description": "Backend functions for the trojan admin panel.",
+  "dependencies": {
+    "@netlify/blobs": "^6.4.0",
+    "firebase-admin": "^12.0.0"
+  }
+}
