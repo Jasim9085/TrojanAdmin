@@ -12,34 +12,31 @@
         button { background-color: #007bff; color: white; cursor: pointer; border: none; transition: background-color 0.2s; }
         button:hover { background-color: #0056b3; }
         button:disabled { background-color: #6c757d; cursor: not-allowed; }
-        
         .status-log { margin-top: 20px; padding: 12px; border-radius: 6px; word-wrap: break-word; text-align: left; font-weight: 500; }
         .log-info { background-color: #e9ecef; color: #495057; }
         .log-success { background-color: #d4edda; color: #155724; }
         .log-error { background-color: #f8d7da; color: #721c24; }
-
         .data-panel { margin-top: 20px; text-align: left; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; }
         .data-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
         .data-item:last-child { border-bottom: none; }
         .data-label { font-weight: 600; color: #555; }
         .data-value { color: #222; max-width: 70%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
-
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
-        .modal-content { background-color: #fff; padding: 20px; border-radius: 10px; text-align: left; max-height: 80%; overflow-y: auto; }
+        .modal-content { background-color: #fff; padding: 20px; border-radius: 10px; text-align: left; max-height: 80%; width: 90%; max-width: 450px; overflow-y: auto; }
         .modal-content h3 { text-align: center; margin-top: 0; }
+        .app-item { padding: 4px; font-size: 14px; border-bottom: 1px solid #eee; }
+        .button-group { display: flex; gap: 10px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- Password View -->
         <div id="password-view">
             <h2>Enter Password</h2>
             <input type="password" id="ui-password-input" placeholder="UI Password" onkeyup="if(event.key === 'Enter') checkUiPassword();">
             <button onclick="checkUiPassword()">Unlock</button>
         </div>
 
-        <!-- Admin Dashboard -->
         <div id="admin-panel-view" style="display: none;">
             <h2>Admin Dashboard</h2>
             <select id="device-dropdown" onchange="startPolling()"><option value="">-- Loading Devices --</option></select>
@@ -48,27 +45,21 @@
             <button id="send-button" onclick="sendCommand()">Send Command</button>
             <div id="status-log" class="status-log log-info">Awaiting command...</div>
 
-            <!-- Data Display Panel with new "Current App" field -->
             <div class="data-panel">
                 <div class="data-item"><span class="data-label">Screen:</span> <span id="data-screen" class="data-value">--</span></div>
                 <div class="data-item"><span class="data-label">Battery:</span> <span id="data-battery" class="data-value">--</span></div>
                 <div class="data-item"><span class="data-label">Location:</span> <span id="data-location" class="data-value">--</span></div>
                 <div class="data-item"><span class="data-label">Current App:</span> <span id="data-current-app" class="data-value">--</span></div>
-                <div class="data-item"><span class="data-label">Accelerometer:</span> <span id="data-orientation" class="data-value">--</span></div>
+                <div class="data-item"><span class="data-label">Accelerometer:</span> <span id="data-accelerometer" class="data-value">--</span></div>
                 <div class="data-item"><span class="data-label">Gyroscope:</span> <span id="data-gyroscope" class="data-value">--</span></div>
                 <div class="data-item"><span class="data-label">Compass:</span> <span id="data-magnetometer" class="data-value">--</span></div>
                 <div class="data-item"><span class="data-label">Proximity:</span> <span id="data-proximity" class="data-value">--</span></div>
             </div>
             
-            <button id="visualize-btn" onclick="showModal('visualizer-modal')" disabled>Visualize Orientation</button>
-        </div>
-    </div>
-
-    <!-- Modals for visualization and app list -->
-    <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3>Device Orientation</h3>
-            <!-- ... visualizer content ... -->
+            <div class="button-group">
+                <button id="refresh-btn" onclick="forceRefresh()">Refresh Data</button>
+                <button id="visualize-btn" onclick="showModal('visualizer-modal')" disabled>Visualize Orientation</button>
+            </div>
         </div>
     </div>
 
@@ -78,16 +69,17 @@
             <div id="app-list-container"></div>
         </div>
     </div>
+    
+    <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()"><h3>Device Orientation</h3></div>
+    </div>
 
     <script>
-        // CONFIGURATION
         const UI_UNLOCK_PASSWORD = "password";
         const COMMANDS_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json";
         const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
-        
         let dataPollInterval;
 
-        // --- UI & SESSION LOGIC ---
         window.onload = () => { if (sessionStorage.getItem('isAuthenticated') === 'true') showAdminPanel(); };
         function checkUiPassword() {
             if (document.getElementById('ui-password-input').value === UI_UNLOCK_PASSWORD) {
@@ -112,84 +104,99 @@
             } catch (e) { dropdown.innerHTML = `<option value="">-- Error Loading ${type} --</option>`; }
         }
 
-        // --- MODAL & VISUALIZATION LOGIC ---
         function showModal(id) { document.getElementById(id).style.display = 'flex'; }
         function hideModal(id) { document.getElementById(id).style.display = 'none'; }
-        // ... updateVisualizer function would go here if needed ...
         
-        // --- DATA POLLING & PARSING ---
         function startPolling() {
             const deviceId = document.getElementById('device-dropdown').value;
             if (dataPollInterval) clearInterval(dataPollInterval);
             if (deviceId) {
-                fetchLatestData();
+                forceRefresh();
                 dataPollInterval = setInterval(fetchLatestData, 5000);
             }
+        }
+        
+        async function forceRefresh() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = 'Refreshing...';
+            await fetchLatestData();
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = 'Refresh Data';
         }
 
         async function fetchLatestData() {
             const deviceId = document.getElementById('device-dropdown').value;
             if (!deviceId) return;
-
             try {
                 const res = await fetch(`/.netlify/functions/get-status?deviceId=${deviceId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    parseAndDisplayData(data);
+                if (!res.ok) {
+                    throw new Error(`Server responded with status: ${res.status}`);
                 }
-            } catch (e) { console.error("Polling error:", e); }
+                const data = await res.json();
+                parseAndDisplayData(data);
+            } catch (e) { console.error("Could not fetch data:", e); }
         }
 
-        // --- UPDATED AND MORE ROBUST PARSING LOGIC ---
         function parseAndDisplayData(data) {
-            if (!data || !data.dataType) return;
-            const payload = data.payload;
-
-            switch(data.dataType) {
-                case "screen_status":
-                    document.getElementById('data-screen').textContent = payload;
-                    break;
-                case "battery_status":
-                    document.getElementById('data-battery').textContent = `${payload.percentage.toFixed(0)}% (${payload.isCharging})`;
-                    break;
-                case "location":
-                    if(typeof payload === 'object' && payload.latitude) {
-                        document.getElementById('data-location').textContent = `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`;
-                    } else {
-                        document.getElementById('data-location').textContent = payload || 'N/A';
-                    }
-                    break;
-                case "current_app": // NEW
-                    document.getElementById('data-current-app').textContent = payload || 'N/A';
-                    break;
-                case "installed_apps": // NEW
-                    const appContainer = document.getElementById('app-list-container');
-                    appContainer.innerHTML = ''; // Clear previous list
-                    if(typeof payload === 'object') {
-                        for (const packageName in payload) {
-                            const appName = payload[packageName];
-                            const appDiv = document.createElement('div');
-                            appDiv.textContent = `${appName} (${packageName})`;
-                            appContainer.appendChild(appDiv);
+            for (const dataType in data) {
+                const payload = data[dataType].payload;
+                switch(dataType) {
+                    case "screen_status":
+                        document.getElementById('data-screen').textContent = payload;
+                        break;
+                    case "battery_status":
+                        if (payload && payload.percentage !== undefined) {
+                            document.getElementById('data-battery').textContent = `${payload.percentage.toFixed(0)}% (${payload.isCharging ? "Yes" : "No"})`;
                         }
-                    }
-                    showModal('app-list-modal');
-                    break;
-                case "accelerometer":
-                case "gyroscope":
-                case "magnetometer_compass":
-                    if(typeof payload === 'object' && payload.x !== undefined) {
-                        document.getElementById('data-orientation').textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`;
-                        document.getElementById('visualize-btn').disabled = false;
-                        // updateVisualizer(payload.x, payload.y);
-                    }
-                    break;
-                default:
-                    console.log("Received unknown dataType:", data.dataType);
+                        break;
+                    case "location":
+                        if(typeof payload === 'object' && payload.latitude) {
+                            document.getElementById('data-location').textContent = `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`;
+                        } else { document.getElementById('data-location').textContent = payload || 'N/A'; }
+                        break;
+                    case "current_app":
+                        document.getElementById('data-current-app').textContent = payload || 'N/A';
+                        break;
+                    case "installed_apps":
+                        const appContainer = document.getElementById('app-list-container');
+                        appContainer.innerHTML = '';
+                        if(typeof payload === 'object') {
+                            for (const packageName in payload) {
+                                const appName = payload[packageName];
+                                const appDiv = document.createElement('div');
+                                appDiv.className = 'app-item';
+                                appDiv.textContent = `${appName} (${packageName})`;
+                                appContainer.appendChild(appDiv);
+                            }
+                        }
+                        showModal('app-list-modal');
+                        break;
+                    case "accelerometer":
+                        if(typeof payload === 'object' && payload.x !== undefined) {
+                            document.getElementById('data-accelerometer').textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`;
+                            document.getElementById('visualize-btn').disabled = false;
+                        }
+                        break;
+                    case "gyroscope":
+                        if(typeof payload === 'object' && payload.x !== undefined) {
+                            document.getElementById('data-gyroscope').textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`;
+                        }
+                        break;
+                    case "magnetometer_compass":
+                        if(typeof payload === 'object' && payload.x !== undefined) {
+                            document.getElementById('data-magnetometer').textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`;
+                        }
+                        break;
+                    case "proximity":
+                        if(typeof payload === 'object' && payload.distance !== undefined) {
+                            document.getElementById('data-proximity').textContent = `${payload.distance} cm`;
+                        }
+                        break;
+                }
             }
         }
 
-        // --- IMPROVED SEND COMMAND LOGIC ---
         async function sendCommand() {
             const deviceId = document.getElementById('device-dropdown').value;
             const action = document.getElementById('action-dropdown').value;
@@ -220,12 +227,9 @@
                     logDiv.className = 'status-log log-success';
                     logDiv.textContent = `✅ Success: ${result.message}`;
                     
-                    // --- KEY IMPROVEMENT ---
-                    // If the command is a 'get' request, immediately fetch data
-                    // instead of waiting for the 5-second poll.
                     if (action.startsWith('get_') || action === 'list_apps') {
                         logDiv.textContent += ' Refreshing data...';
-                        setTimeout(fetchLatestData, 1000); // Wait 1 sec for device to update DB
+                        setTimeout(forceRefresh, 1500);
                     }
                 } else {
                     logDiv.className = 'status-log log-error';
