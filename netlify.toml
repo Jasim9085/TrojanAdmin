@@ -1,10 +1,16 @@
-# This tells Netlify where your functions are
+# This tells Netlify where your functions are located.
+# It should already be here.
 [functions]
   directory = "netlify/functions/"
 
-# This new section enables the blob store
-[build]
-  [build.processing]
-    [build.processing.blobs]
-      # This makes the blob store available to your functions
-      deploy_api = true
+# This is the NEW, CRITICAL section that enables Netlify Blobs.
+# This will fix the current error.
+[build.processing.blobs]
+  deploy_api = true
+
+# This rule ensures your function URLs work correctly.
+# It should also already be here.
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
