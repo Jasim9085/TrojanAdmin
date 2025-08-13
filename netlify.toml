@@ -1,16 +1,5 @@
-# This tells Netlify where your functions are.
 [functions]
   directory = "netlify/functions/"
 
-# This section enables Netlify Blobs for your functions.
 [build.processing.blobs]
   deploy_api = true
-
-# This is the corrected redirect rule. It ensures that any request
-# to /.netlify/functions/some-name is correctly passed to the function.
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/:splat"
-  status = 200
-  force = true # This makes sure the rule is applied.
-  conditions = { "Role" = ["netlify"] } # This scopes the rule correctly.
