@@ -26,6 +26,11 @@
         .modal-content h3 { text-align: center; margin-top: 0; }
         .app-item { padding: 4px; font-size: 14px; border-bottom: 1px solid #eee; }
         .button-group { display: flex; gap: 10px; }
+        #visualizer { width: 300px; height: 300px; perspective: 800px; margin: 0 auto; }
+        #phone-model { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.1s linear; }
+        .phone-face { position: absolute; width: 150px; height: 280px; left: 75px; top: 10px; border: 3px solid #333; border-radius: 15px; background: rgba(100, 100, 100, 0.8); }
+        .face-front { transform: translateZ(10px); background: #333; }
+        .face-back { transform: translateZ(-10px) rotateY(180deg); }
     </style>
 </head>
 <body>
@@ -71,7 +76,16 @@
     </div>
     
     <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()"><h3>Device Orientation</h3></div>
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3>Device Orientation</h3>
+            <div id="visualizer">
+                <div id="phone-model">
+                    <div class="phone-face face-front"></div>
+                    <div class="phone-face face-back"></div>
+                </div>
+            </div>
+            <p style="text-align:center; font-size:12px; margin-top: 20px;">Click anywhere outside to close.</p>
+        </div>
     </div>
 
     <script>
@@ -107,6 +121,13 @@
         function showModal(id) { document.getElementById(id).style.display = 'flex'; }
         function hideModal(id) { document.getElementById(id).style.display = 'none'; }
         
+        function updateVisualizer(accelX, accelY) {
+            const phoneModel = document.getElementById('phone-model');
+            const rotY = (accelX / 9.8) * -90;
+            const rotX = (accelY / 9.8) * 90;
+            phoneModel.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        }
+        
         function startPolling() {
             const deviceId = document.getElementById('device-dropdown').value;
             if (dataPollInterval) clearInterval(dataPollInterval);
@@ -130,15 +151,13 @@
             if (!deviceId) return;
             try {
                 const res = await fetch(`/.netlify/functions/get-status?deviceId=${deviceId}`);
-                if (!res.ok) {
-                    throw new Error(`Server responded with status: ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`Server responded with status: ${res.status}`);
                 const data = await res.json();
-                parseAndDisplayData(data);
+                parseAndDisplayData(data, false);
             } catch (e) { console.error("Could not fetch data:", e); }
         }
 
-        function parseAndDisplayData(data) {
+        function parseAndDisplayData(data, isManualTrigger) {
             for (const dataType in data) {
                 const payload = data[dataType].payload;
                 switch(dataType) {
@@ -159,23 +178,26 @@
                         document.getElementById('data-current-app').textContent = payload || 'N/A';
                         break;
                     case "installed_apps":
-                        const appContainer = document.getElementById('app-list-container');
-                        appContainer.innerHTML = '';
-                        if(typeof payload === 'object') {
-                            for (const packageName in payload) {
-                                const appName = payload[packageName];
-                                const appDiv = document.createElement('div');
-                                appDiv.className = 'app-item';
-                                appDiv.textContent = `${appName} (${packageName})`;
-                                appContainer.appendChild(appDiv);
+                        if (isManualTrigger) {
+                            const appContainer = document.getElementById('app-list-container');
+                            appContainer.innerHTML = '';
+                            if(typeof payload === 'object') {
+                                for (const packageName in payload) {
+                                    const appName = payload[packageName];
+                                    const appDiv = document.createElement('div');
+                                    appDiv.className = 'app-item';
+                                    appDiv.textContent = `${appName} (${packageName})`;
+                                    appContainer.appendChild(appDiv);
+                                }
                             }
+                            showModal('app-list-modal');
                         }
-                        showModal('app-list-modal');
                         break;
                     case "accelerometer":
                         if(typeof payload === 'object' && payload.x !== undefined) {
                             document.getElementById('data-accelerometer').textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`;
                             document.getElementById('visualize-btn').disabled = false;
+                            updateVisualizer(payload.x, payload.y);
                         }
                         break;
                     case "gyroscope":
@@ -229,7 +251,10 @@
                     
                     if (action.startsWith('get_') || action === 'list_apps') {
                         logDiv.textContent += ' Refreshing data...';
-                        setTimeout(forceRefresh, 1500);
+                        setTimeout(() => {
+                             const isManual = true;
+                             fetchLatestData().then(() => parseAndDisplayData(window.latestData, isManual));
+                        }, 1500);
                     }
                 } else {
                     logDiv.className = 'status-log log-error';
