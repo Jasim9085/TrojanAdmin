@@ -13,11 +13,7 @@
         button:hover { background-color: #0056b3; }
         button:disabled { background-color: #5a6268; cursor: not-allowed; }
         #response { margin-top: 20px; padding: 12px; border-radius: 6px; word-wrap: break-word; text-align: left; min-height: 50px; font-weight: 500; }
-        
-        /* Style for success messages */
         .response-success { background-color: #d4edda; color: #155724; }
-        
-        /* Style for error messages */
         .response-error { background-color: #f8d7da; color: #721c24; }
     </style>
 </head>
@@ -35,34 +31,21 @@
         <!-- View 2: Admin Panel (Hidden initially) -->
         <div id="admin-panel-view" style="display: none;">
             <h2>Admin Control Panel</h2>
-            
-            <select id="device-dropdown">
-                <option value="">-- Loading Devices --</option>
-            </select>
-            
-            <select id="action-dropdown">
-                <option value="">-- Loading Commands --</option>
-            </select>
-            
+            <select id="device-dropdown"><option value="">-- Loading Devices --</option></select>
+            <select id="action-dropdown"><option value="">-- Loading Commands --</option></select>
             <input type="password" id="backend-password" placeholder="Backend API Password">
-            
             <button id="send-button" onclick="sendCommand()">Send Command</button>
             <div id="response">Awaiting command...</div>
         </div>
     </div>
 
     <script>
-        // ===================================================================================
-        // SCRIPT CONFIGURATION - NO CHANGES HERE
-        // ===================================================================================
+        // SCRIPT CONFIGURATION
         const UI_UNLOCK_PASSWORD = "password";
         const COMMANDS_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json";
         const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
 
-        // ===================================================================================
-        // SESSION AND UI LOGIC - NO CHANGES HERE
-        // ===================================================================================
-
+        // SESSION AND UI LOGIC
         window.onload = function() {
             if (sessionStorage.getItem('isAuthenticated') === 'true') {
                 showAdminPanel();
@@ -85,10 +68,7 @@
             populateDropdown('action-dropdown', COMMANDS_JSON_URL, 'Command');
         }
 
-        // ===================================================================================
-        // DATA FETCHING AND COMMAND LOGIC - WITH UX IMPROVEMENTS
-        // ===================================================================================
-
+        // DATA FETCHING AND COMMAND LOGIC
         async function populateDropdown(dropdownId, url, dataType) {
             const dropdown = document.getElementById(dropdownId);
             try {
@@ -121,14 +101,16 @@
                 return;
             }
             
-            // UX Improvement: Disable button while sending
             sendButton.disabled = true;
             sendButton.textContent = 'Sending...';
             responseDiv.textContent = 'Processing request...';
             responseDiv.className = '';
 
             try {
-                const response = await fetch('/netlify/functions/send-command', {
+                // ######################################################################
+                // ## THIS IS THE CORRECTED LINE - Note the '.' at the beginning     ##
+                // ######################################################################
+                const response = await fetch('/.netlify/functions/send-command', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ deviceId, action, password: passwordInput.value })
@@ -137,13 +119,10 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    // UX Improvement: Green for success
                     responseDiv.className = 'response-success';
                     responseDiv.textContent = '✅ Success: ' + result.message;
-                    // UX Improvement: Clear password field on success
                     passwordInput.value = ''; 
                 } else {
-                    // UX Improvement: Red for error
                     responseDiv.className = 'response-error';
                     responseDiv.textContent = '❌ Error: ' + (result.error || 'Unknown error from server');
                 }
@@ -152,7 +131,6 @@
                 responseDiv.className = 'response-error';
                 responseDiv.textContent = '❌ Network Error: Could not reach the serverless function.';
             } finally {
-                // UX Improvement: Always re-enable the button
                 sendButton.disabled = false;
                 sendButton.textContent = 'Send Command';
             }
