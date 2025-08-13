@@ -11,8 +11,10 @@ const DATA_TYPES_TO_FETCH = [
     "location",
     "current_app",
     "installed_apps",
-    "accelerometer"
-    // You can add "gyroscope", etc. here as you implement them
+    "accelerometer",
+    "gyroscope",
+    "magnetometer_compass",
+    "proximity"
 ];
 
 exports.handler = async function(event) {
