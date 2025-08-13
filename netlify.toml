@@ -1,2 +1,10 @@
+# This tells Netlify where your functions are
 [functions]
   directory = "netlify/functions/"
+
+# This new section enables the blob store
+[build]
+  [build.processing]
+    [build.processing.blobs]
+      # This makes the blob store available to your functions
+      deploy_api = true
