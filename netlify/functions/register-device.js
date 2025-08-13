@@ -1,8 +1,7 @@
-// This function handles registration from the Android app.
-import { getStore } from "@netlify/blobs";
+// Using the older 'require' syntax for maximum compatibility.
+const { getStore } = require("@netlify/blobs");
 
 exports.handler = async function(event) {
-  // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
@@ -15,10 +14,7 @@ exports.handler = async function(event) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing deviceId or token' }) };
     }
 
-    // Get a reference to our "devices" store
     const devicesStore = getStore("devices");
-    
-    // Save the token using the deviceId as the key
     await devicesStore.set(deviceId, token);
 
     console.log(`Successfully registered device: ${deviceId}`);
