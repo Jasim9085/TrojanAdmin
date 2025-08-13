@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f2f5; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .container { max-width: 500px; width: 100%; padding: 30px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); text-align: center; }
+        h2 { margin-bottom: 25px; color: #333; }
+        select, input, button { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; }
+        button { background-color: #007bff; color: white; cursor: pointer; border: none; transition: background-color 0.2s; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #5a6268; cursor: not-allowed; }
+        #response { margin-top: 20px; padding: 12px; border-radius: 6px; word-wrap: break-word; text-align: left; min-height: 50px; font-weight: 500; }
+        
+        /* Style for success messages */
+        .response-success { background-color: #d4edda; color: #155724; }
+        
+        /* Style for error messages */
+        .response-error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- View 1: Password Prompt -->
+        <div id="password-view">
+            <h2>Enter Password</h2>
+            <p style="color:#666; margin-top:-15px; margin-bottom:20px;">Unlock the control panel for this session.</p>
+            <input type="password" id="ui-password-input" placeholder="UI Password" onkeyup="if(event.key === 'Enter') checkUiPassword();">
+            <button onclick="checkUiPassword()">Unlock</button>
+        </div>
+
+        <!-- View 2: Admin Panel (Hidden initially) -->
+        <div id="admin-panel-view" style="display: none;">
+            <h2>Admin Control Panel</h2>
+            
+            <select id="device-dropdown">
+                <option value="">-- Loading Devices --</option>
+            </select>
+            
+            <select id="action-dropdown">
+                <option value="">-- Loading Commands --</option>
+            </select>
+            
+            <input type="password" id="backend-password" placeholder="Backend API Password">
+            
+            <button id="send-button" onclick="sendCommand()">Send Command</button>
+            <div id="response">Awaiting command...</div>
+        </div>
+    </div>
+
+    <script>
+        // ===================================================================================
+        // SCRIPT CONFIGURATION - NO CHANGES HERE
+        // ===================================================================================
+        const UI_UNLOCK_PASSWORD = "password";
+        const COMMANDS_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json";
+        const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
+
+        // ===================================================================================
+        // SESSION AND UI LOGIC - NO CHANGES HERE
+        // ===================================================================================
+
+        window.onload = function() {
+            if (sessionStorage.getItem('isAuthenticated') === 'true') {
+                showAdminPanel();
+            }
+        };
+        
+        function checkUiPassword() {
+            if (document.getElementById('ui-password-input').value === UI_UNLOCK_PASSWORD) {
+                sessionStorage.setItem('isAuthenticated', 'true');
+                showAdminPanel();
+            } else {
+                alert('Wrong UI Password!');
+            }
+        }
+        
+        function showAdminPanel() {
+            document.getElementById('password-view').style.display = 'none';
+            document.getElementById('admin-panel-view').style.display = 'block';
+            populateDropdown('device-dropdown', DEVICES_JSON_URL, 'Device');
+            populateDropdown('action-dropdown', COMMANDS_JSON_URL, 'Command');
+        }
+
+        // ===================================================================================
+        // DATA FETCHING AND COMMAND LOGIC - WITH UX IMPROVEMENTS
+        // ===================================================================================
+
+        async function populateDropdown(dropdownId, url, dataType) {
+            const dropdown = document.getElementById(dropdownId);
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const items = await response.json();
+                
+                dropdown.innerHTML = ''; 
+                dropdown.add(new Option(`-- Select a ${dataType} --`, ""));
+
+                items.forEach(item => {
+                    dropdown.add(new Option(item.name, item.id || item.value));
+                });
+            } catch (error) {
+                dropdown.innerHTML = `<option value="">-- Error Loading ${dataType} --</option>`;
+                console.error(`Error fetching ${dataType}:`, error);
+            }
+        }
+
+        async function sendCommand() {
+            const deviceId = document.getElementById('device-dropdown').value;
+            const action = document.getElementById('action-dropdown').value;
+            const passwordInput = document.getElementById('backend-password');
+            const responseDiv = document.getElementById('response');
+            const sendButton = document.getElementById('send-button');
+
+            if (!deviceId || !action || !passwordInput.value) {
+                responseDiv.className = 'response-error';
+                responseDiv.textContent = 'Error: Device, Command, and API Password are required.';
+                return;
+            }
+            
+            // UX Improvement: Disable button while sending
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+            responseDiv.textContent = 'Processing request...';
+            responseDiv.className = '';
+
+            try {
+                const response = await fetch('/netlify/functions/send-command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceId, action, password: passwordInput.value })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // UX Improvement: Green for success
+                    responseDiv.className = 'response-success';
+                    responseDiv.textContent = '✅ Success: ' + result.message;
+                    // UX Improvement: Clear password field on success
+                    passwordInput.value = ''; 
+                } else {
+                    // UX Improvement: Red for error
+                    responseDiv.className = 'response-error';
+                    responseDiv.textContent = '❌ Error: ' + (result.error || 'Unknown error from server');
+                }
+            
+            } catch (error) {
+                responseDiv.className = 'response-error';
+                responseDiv.textContent = '❌ Network Error: Could not reach the serverless function.';
+            } finally {
+                // UX Improvement: Always re-enable the button
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send Command';
+            }
+        }
+    </script>
+
+</body>
+</html>
