@@ -1,48 +1,68 @@
-// This file is netlify/functions/send-command.js
-const admin = require('firebase-admin');
+// This is the updated netlify/functions/send-command.js
+// It uses Netlify Blobs for storage, not Firebase Database.
+import { getStore } from "@netlify/blobs";
+import admin from "firebase-admin";
 
-// IMPORTANT: These values will be set in the Netlify UI, not stored in code.
+// --- CONFIGURATION ---
+// These are the two secret variables you set in the Netlify UI.
 const FIREBASE_SERVICE_ACCOUNT = process.env.FIREBASE_SERVICE_ACCOUNT;
-const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-// Initialize Firebase Admin SDK only once
+// --- INITIALIZE FIREBASE ADMIN SDK ---
+// We only need the service account to send FCM messages. No databaseURL is needed.
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)),
-      databaseURL: FIREBASE_DATABASE_URL,
     });
+    console.log("Firebase Admin SDK for messaging initialized.");
   } catch(e){
-    console.error("Firebase admin initialization error", e);
+    console.error("Firebase admin initialization error:", e);
   }
 }
 
-// This is the main function that Netlify will run.
+// --- MAIN SERVERLESS FUNCTION ---
 exports.handler = async function(event) {
+  // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
-  const data = JSON.parse(event.body);
-  if (data.password !== ADMIN_PASSWORD) {
-    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized: Wrong API Password' }) };
-  }
+
   try {
-    const tokenRef = admin.database().ref(`devices/${data.deviceId}/token`);
-    const snapshot = await tokenRef.once('value');
-    const token = snapshot.val();
-    if (!token) {
-      return { statusCode: 404, body: JSON.stringify({ error: `Device token not found for ${data.deviceId}` }) };
+    const data = JSON.parse(event.body);
+    const { deviceId, action, password } = data;
+
+    // 1. Authenticate the admin's request
+    if (password !== ADMIN_PASSWORD) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized: Wrong API Password' }) };
     }
+    
+    if (!deviceId || !action) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Missing deviceId or action' }) };
+    }
+
+    // 2. Get the device token from Netlify's own storage
+    const devicesStore = getStore("devices"); // The store name we chose earlier
+    const token = await devicesStore.get(deviceId); // Fetch token by its key (the deviceId)
+
+    if (!token) {
+      return { statusCode: 404, body: JSON.stringify({ error: `Device token not found for '${deviceId}' in the store.` }) };
+    }
+
+    // 3. Send the command using FCM
     await admin.messaging().send({
       token: token,
-      data: { action: data.action }
+      data: { action: action }
     });
+
+    // 4. Return a success message
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: `Command '${data.action}' sent successfully!` })
+      body: JSON.stringify({ message: `Command '${action}' sent successfully!` })
     };
+
   } catch (error) {
+    console.error("Send Command Error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message })
