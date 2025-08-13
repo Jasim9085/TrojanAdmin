@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Control</title>
+    <title>Admin Dashboard</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f2f5; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .container { max-width: 500px; width: 100%; padding: 30px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); text-align: center; }
@@ -11,131 +11,211 @@
         select, input, button { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; }
         button { background-color: #007bff; color: white; cursor: pointer; border: none; transition: background-color 0.2s; }
         button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #5a6268; cursor: not-allowed; }
-        #response { margin-top: 20px; padding: 12px; border-radius: 6px; word-wrap: break-word; text-align: left; min-height: 50px; font-weight: 500; }
-        .response-success { background-color: #d4edda; color: #155724; }
-        .response-error { background-color: #f8d7da; color: #721c24; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        
+        /* New Styles */
+        .status-log { margin-top: 20px; padding: 12px; border-radius: 6px; word-wrap: break-word; text-align: left; font-weight: 500; }
+        .log-info { background-color: #e9ecef; color: #495057; }
+        .log-success { background-color: #d4edda; color: #155724; }
+        .log-error { background-color: #f8d7da; color: #721c24; }
+
+        .data-panel { margin-top: 20px; text-align: left; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; }
+        .data-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+        .data-item:last-child { border-bottom: none; }
+        .data-label { font-weight: 600; color: #555; }
+        .data-value { color: #222; }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+        .modal-content { background-color: #fff; padding: 20px; border-radius: 10px; text-align: center; }
+        #visualizer { width: 300px; height: 300px; perspective: 800px; }
+        #phone-model { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.1s linear; }
+        .phone-face { position: absolute; width: 150px; height: 280px; left: 75px; top: 10px; border: 3px solid #333; border-radius: 15px; background: rgba(100, 100, 100, 0.8); }
+        .face-front { transform: translateZ(10px); background: #333; }
+        .face-back { transform: translateZ(-10px) rotateY(180deg); }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- View 1: Password Prompt -->
+        <!-- Password View (unchanged) -->
         <div id="password-view">
             <h2>Enter Password</h2>
-            <p style="color:#666; margin-top:-15px; margin-bottom:20px;">Unlock the control panel for this session.</p>
             <input type="password" id="ui-password-input" placeholder="UI Password" onkeyup="if(event.key === 'Enter') checkUiPassword();">
             <button onclick="checkUiPassword()">Unlock</button>
         </div>
 
-        <!-- View 2: Admin Panel (Hidden initially) -->
+        <!-- Admin Dashboard -->
         <div id="admin-panel-view" style="display: none;">
-            <h2>Admin Control Panel</h2>
-            <select id="device-dropdown"><option value="">-- Loading Devices --</option></select>
+            <h2>Admin Dashboard</h2>
+            <select id="device-dropdown" onchange="startPolling()"><option value="">-- Loading Devices --</option></select>
             <select id="action-dropdown"><option value="">-- Loading Commands --</option></select>
             <input type="password" id="backend-password" placeholder="Backend API Password">
             <button id="send-button" onclick="sendCommand()">Send Command</button>
-            <div id="response">Awaiting command...</div>
+            <div id="status-log" class="status-log log-info">Awaiting command...</div>
+
+            <!-- New Live Data Display Panel -->
+            <div class="data-panel">
+                <div class="data-item"><span class="data-label">Screen:</span> <span id="data-screen" class="data-value">--</span></div>
+                <div class="data-item"><span class="data-label">Battery:</span> <span id="data-battery" class="data-value">--</span></div>
+                <div class="data-item"><span class="data-label">Location:</span> <span id="data-location" class="data-value">--</span></div>
+                <div class="data-item"><span class="data-label">Orientation (X,Y,Z):</span> <span id="data-orientation" class="data-value">--</span></div>
+            </div>
+            
+            <!-- New Visualization Button -->
+            <button id="visualize-btn" onclick="showVisualizer()" disabled>Visualize Orientation</button>
+        </div>
+    </div>
+
+    <!-- New 3D Visualizer Modal -->
+    <div id="visualizer-modal" class="modal" onclick="hideVisualizer()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3>Device Orientation</h3>
+            <div id="visualizer">
+                <div id="phone-model">
+                    <div class="phone-face face-front"></div>
+                    <div class="phone-face face-back"></div>
+                </div>
+            </div>
+            <p>Click anywhere outside to close.</p>
         </div>
     </div>
 
     <script>
-        // SCRIPT CONFIGURATION
+        // CONFIGURATION
         const UI_UNLOCK_PASSWORD = "password";
         const COMMANDS_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json";
         const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
-
-        // SESSION AND UI LOGIC
-        window.onload = function() {
-            if (sessionStorage.getItem('isAuthenticated') === 'true') {
-                showAdminPanel();
-            }
-        };
         
+        let dataPollInterval; // To hold our setInterval ID
+
+        // UI & SESSION LOGIC (no major changes)
+        window.onload = () => { if (sessionStorage.getItem('isAuthenticated') === 'true') showAdminPanel(); };
         function checkUiPassword() {
             if (document.getElementById('ui-password-input').value === UI_UNLOCK_PASSWORD) {
                 sessionStorage.setItem('isAuthenticated', 'true');
                 showAdminPanel();
-            } else {
-                alert('Wrong UI Password!');
-            }
+            } else { alert('Wrong UI Password!'); }
         }
-        
         function showAdminPanel() {
             document.getElementById('password-view').style.display = 'none';
             document.getElementById('admin-panel-view').style.display = 'block';
             populateDropdown('device-dropdown', DEVICES_JSON_URL, 'Device');
             populateDropdown('action-dropdown', COMMANDS_JSON_URL, 'Command');
         }
-
-        // DATA FETCHING AND COMMAND LOGIC
-        async function populateDropdown(dropdownId, url, dataType) {
-            const dropdown = document.getElementById(dropdownId);
+        async function populateDropdown(id, url, type) {
+            const dropdown = document.getElementById(id);
             try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const items = await response.json();
-                
-                dropdown.innerHTML = ''; 
-                dropdown.add(new Option(`-- Select a ${dataType} --`, ""));
-
-                items.forEach(item => {
-                    dropdown.add(new Option(item.name, item.id || item.value));
-                });
-            } catch (error) {
-                dropdown.innerHTML = `<option value="">-- Error Loading ${dataType} --</option>`;
-                console.error(`Error fetching ${dataType}:`, error);
-            }
+                const res = await fetch(url);
+                const items = await res.json();
+                dropdown.innerHTML = '';
+                dropdown.add(new Option(`-- Select a ${type} --`, ""));
+                items.forEach(item => dropdown.add(new Option(item.name, item.id || item.value, false, item.disabled)));
+            } catch (e) { dropdown.innerHTML = `<option value="">-- Error Loading ${type} --</option>`; }
+        }
+        
+        // --- NEW: REAL-TIME DATA POLLING ---
+        function startPolling() {
+            if (dataPollInterval) clearInterval(dataPollInterval); // Clear any old polling
+            fetchLatestData(); // Fetch immediately once
+            dataPollInterval = setInterval(fetchLatestData, 5000); // Then poll every 5 seconds
         }
 
+        async function fetchLatestData() {
+            const deviceId = document.getElementById('device-dropdown').value;
+            if (!deviceId) return;
+
+            try {
+                const res = await fetch(`/.netlify/functions/get-status?deviceId=${deviceId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    parseAndDisplayData(data);
+                }
+            } catch (e) { console.error("Polling error:", e); }
+        }
+
+        // --- NEW: UI UPDATE LOGIC ---
+        function parseAndDisplayData(data) {
+            if (!data || !data.dataType) return;
+            const payload = data.payload;
+
+            switch(data.dataType) {
+                case "screen_status":
+                    document.getElementById('data-screen').textContent = payload;
+                    break;
+                case "battery_status":
+                    document.getElementById('data-battery').textContent = `${payload.percentage.toFixed(0)}% (${payload.isCharging})`;
+                    break;
+                case "location":
+                    if(typeof payload === 'object') {
+                        document.getElementById('data-location').textContent = `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`;
+                    } else {
+                        document.getElementById('data-location').textContent = payload;
+                    }
+                    break;
+                case "accelerometer":
+                case "gyroscope":
+                case "magnetometer_compass":
+                    document.getElementById('data-orientation').textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`;
+                    document.getElementById('visualize-btn').disabled = false;
+                    updateVisualizer(payload.x, payload.y); // Use accelerometer for simple tilt
+                    break;
+            }
+        }
+        
+        // --- NEW: 3D VISUALIZATION LOGIC ---
+        function showVisualizer() { document.getElementById('visualizer-modal').style.display = 'flex'; }
+        function hideVisualizer() { document.getElementById('visualizer-modal').style.display = 'none'; }
+        function updateVisualizer(accelX, accelY) {
+            const phoneModel = document.getElementById('phone-model');
+            // Simple mapping of accelerometer data to CSS rotation.
+            // This creates a "tilt" effect. Y-acceleration tilts on X-axis, and vice-versa.
+            const rotY = (accelX / 9.8) * -90; // Tilt left/right
+            const rotX = (accelY / 9.8) * 90;  // Tilt forward/backward
+            phoneModel.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        }
+
+        // --- UPGRADED: SEND COMMAND LOGIC ---
         async function sendCommand() {
             const deviceId = document.getElementById('device-dropdown').value;
             const action = document.getElementById('action-dropdown').value;
-            const passwordInput = document.getElementById('backend-password');
-            const responseDiv = document.getElementById('response');
+            const password = document.getElementById('backend-password').value;
+            const logDiv = document.getElementById('status-log');
             const sendButton = document.getElementById('send-button');
 
-            if (!deviceId || !action || !passwordInput.value) {
-                responseDiv.className = 'response-error';
-                responseDiv.textContent = 'Error: Device, Command, and API Password are required.';
+            if (!deviceId || !action || !password) {
+                logDiv.className = 'status-log log-error';
+                logDiv.textContent = 'Error: All fields are required.';
                 return;
             }
             
             sendButton.disabled = true;
             sendButton.textContent = 'Sending...';
-            responseDiv.textContent = 'Processing request...';
-            responseDiv.className = '';
+            logDiv.className = 'status-log log-info';
+            logDiv.textContent = `Sending '${action}' command...`;
 
             try {
-                // ######################################################################
-                // ## THIS IS THE CORRECTED LINE - Note the '.' at the beginning     ##
-                // ######################################################################
-                const response = await fetch('/.netlify/functions/send-command', {
+                const res = await fetch('/.netlify/functions/send-command', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deviceId, action, password: passwordInput.value })
+                    body: JSON.stringify({ deviceId, action, password })
                 });
-
-                const result = await response.json();
+                const result = await res.json();
                 
-                if (response.ok) {
-                    responseDiv.className = 'response-success';
-                    responseDiv.textContent = '✅ Success: ' + result.message;
-                    passwordInput.value = ''; 
+                if (res.ok) {
+                    logDiv.className = 'status-log log-success';
+                    logDiv.textContent = `✅ Success: ${result.message}`;
                 } else {
-                    responseDiv.className = 'response-error';
-                    responseDiv.textContent = '❌ Error: ' + (result.error || 'Unknown error from server');
+                    logDiv.className = 'status-log log-error';
+                    logDiv.textContent = `❌ Error: ${result.error || 'Unknown server error'}`;
                 }
-            
             } catch (error) {
-                responseDiv.className = 'response-error';
-                responseDiv.textContent = '❌ Network Error: Could not reach the serverless function.';
+                logDiv.className = 'status-log log-error';
+                logDiv.textContent = '❌ Network Error: Could not reach the command function.';
             } finally {
                 sendButton.disabled = false;
                 sendButton.textContent = 'Send Command';
             }
         }
     </script>
-
 </body>
 </html>
