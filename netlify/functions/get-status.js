@@ -1,22 +1,40 @@
 //
-// get-status.js (FINAL CORRECTED VERSION)
+// get-status.js (UPGRADED FOR TIERED SENSOR SUPPORT)
 //
 const { getStore } = require("@netlify/blobs");
 
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
 const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 
+// --- UPGRADED: Expanded the list of data types to fetch ---
+// This now includes core status, raw sensors for fallback, fused rotation vectors
+// for high-fidelity orientation, and contextual sensors for accurate positioning.
 const DATA_TYPES_TO_FETCH = [
+    // Core Device Status
     "battery_status",
     "screen_status",
     "location",
     "current_app",
     "installed_apps",
 
+    // Raw Sensors (Tier 3 Fallback)
     "accelerometer",
     "gyroscope",
-    "magnetometer_compass",
-    "proximity"
+    "magnetometer", // Standardized from magnetometer_compass
+
+    // Fused Orientation Sensors (Tier 1 & 2)
+    "gravity",
+    "rotation_vector",
+    "game_rotation_vector",
+    "geomagnetic_rotation_vector",
+    
+    // Contextual Sensors (Tier 1 & 2)
+    "proximity",
+    "light",
+    "pressure",
+    "pocket_mode",
+    "face_up_down",
+    "tilt_detector"
 ];
 
 exports.handler = async function(event) {
@@ -41,8 +59,7 @@ exports.handler = async function(event) {
     const promises = DATA_TYPES_TO_FETCH.map(async (dataType) => {
         const key = `${deviceId}_${dataType}`;
 
-        // --- THIS IS THE CORRECTED LINE ---
-        // The method is .get() with a type option, not .getJSON()
+        // Fetch the JSON data from the blob store
         const data = await store.get(key, { type: 'json' });
         
         if (data) {
