@@ -1,15 +1,13 @@
 //
-// get-status.js (UPGRADED FOR TIERED SENSOR SUPPORT)
+// get-status.js (UPGRADED FOR NEW MEDIA TYPES & EFFICIENCY)
 //
 const { getStore } = require("@netlify/blobs");
 
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
 const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 
-// --- UPGRADED: Expanded the list of data types to fetch ---
-// This now includes core status, raw sensors for fallback, fused rotation vectors
-// for high-fidelity orientation, and contextual sensors for accurate positioning.
-const DATA_TYPES_TO_FETCH = [
+// The full list of data types to fetch when a general refresh is requested.
+const ALL_DATA_TYPES = [
     // Core Device Status
     "battery_status",
     "screen_status",
@@ -20,7 +18,7 @@ const DATA_TYPES_TO_FETCH = [
     // Raw Sensors (Tier 3 Fallback)
     "accelerometer",
     "gyroscope",
-    "magnetometer", // Standardized from magnetometer_compass
+    "magnetometer",
 
     // Fused Orientation Sensors (Tier 1 & 2)
     "gravity",
@@ -34,7 +32,11 @@ const DATA_TYPES_TO_FETCH = [
     "pressure",
     "pocket_mode",
     "face_up_down",
-    "tilt_detector"
+    "tilt_detector",
+
+    // --- NEW: Media Payloads ---
+    "screenshot",
+    "picture"
 ];
 
 exports.handler = async function(event) {
@@ -43,7 +45,8 @@ exports.handler = async function(event) {
   }
 
   try {
-    const deviceId = event.queryStringParameters.deviceId;
+    const { deviceId, type: requestedType } = event.queryStringParameters;
+    
     if (!deviceId) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing deviceId parameter.' }) };
     }
@@ -54,16 +57,24 @@ exports.handler = async function(event) {
         token: NETLIFY_ACCESS_TOKEN
     });
     
+    // --- UPGRADE: Determine which data types to fetch ---
+    // If a specific 'type' is requested (e.g., 'installed_apps'), only fetch that.
+    // Otherwise, fetch the entire list for a full refresh.
+    const dataTypesToFetch = requestedType ? [requestedType] : ALL_DATA_TYPES;
+    
     const allDeviceData = {};
 
-    const promises = DATA_TYPES_TO_FETCH.map(async (dataType) => {
+    const promises = dataTypesToFetch.map(async (dataType) => {
         const key = `${deviceId}_${dataType}`;
-
-        // Fetch the JSON data from the blob store
-        const data = await store.get(key, { type: 'json' });
-        
-        if (data) {
-            allDeviceData[dataType] = data;
+        try {
+            const data = await store.get(key, { type: 'json' });
+            if (data) {
+                allDeviceData[dataType] = data;
+            }
+        } catch (error) {
+            // It's common for a key not to be found, so we log it but don't fail the whole request.
+            // This can happen if, for example, a screenshot has never been taken.
+            console.log(`Info: No data found for key '${key}'. This might be expected.`);
         }
     });
 
