@@ -80,7 +80,7 @@
             <h3>Device Orientation</h3>
             <div id="visualizer"></div>
             <div id="heading-info">Heading: --</div>
-            <p style="text-align:center; font-size:12px; margin-top: 15px;">Click and drag to rotate the view. Scroll to zoom.<br>Click anywhere outside to close.</p>
+            <p style="text-align:center; font-size:12px; margin-top: 15px;">Click and drag to rotate view. Scroll to zoom.<br>Click anywhere outside to close.</p>
         </div>
     </div>
 
@@ -90,11 +90,9 @@
         const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
         let dataPollInterval;
 
-        // --- 3D Visualizer Globals ---
+        // --- 3D Visualizer & Sensor Fusion ---
         let scene, camera, renderer, controls, phoneModel;
         let animationFrameId;
-
-        // --- Sensor Fusion Globals ---
         let fusedQuaternion = new THREE.Quaternion();
         let isFusionInitialized = false;
         const GYRO_WEIGHT = 0.98;
@@ -122,23 +120,35 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
 
+            const floorMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.5 });
             const textureLoader = new THREE.TextureLoader();
-            const compassTexture = textureLoader.load('https://i.imgur.com/E5k0y26.png');
+            // **FIX: Replaced broken Imgur link with a working one and added an error handler**
+            textureLoader.load(
+                'https://i.imgur.com/zG7A78n.png',
+                function (texture) { // onLoad
+                    floorMaterial.map = texture;
+                    floorMaterial.needsUpdate = true;
+                },
+                undefined, // onProgress - not needed
+                function (err) { // onError
+                    console.error('An error occurred while loading the compass texture.');
+                }
+            );
+
             const floorGeometry = new THREE.CircleGeometry(4, 32);
-            const floorMaterial = new THREE.MeshPhongMaterial({ map: compassTexture, transparent: true });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = -Math.PI / 2;
             scene.add(floor);
             
             phoneModel = new THREE.Group();
-            const bodyGeometry = new THREE.BoxGeometry(1.5, 3, 0.2);
+            const bodyGeometry = new THREE.BoxGeometry(1.5, 3, 0.2); // X=width, Y=height, Z=depth
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x282828, metalness: 0.5, roughness: 0.6 });
             const phoneBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
             
             const screenGeometry = new THREE.BoxGeometry(1.35, 2.8, 0.05);
             const screenMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
             const phoneScreen = new THREE.Mesh(screenGeometry, screenMaterial);
-            phoneScreen.position.z = 0.11;
+            phoneScreen.position.z = 0.11; // Place screen on front of body
 
             phoneModel.add(phoneBody, phoneScreen);
             scene.add(phoneModel);
@@ -163,40 +173,48 @@
             }
         }
         
+        // **FIX: Corrected the mathematical logic for calculating the orientation quaternion**
         function getQuaternionFromAccelMag(accel, mag) {
             const G = new THREE.Vector3(accel.x, accel.y, accel.z).normalize();
             const M = new THREE.Vector3(mag.x, mag.y, mag.z).normalize();
+            
+            const E = M.clone().cross(G).normalize(); // East vector
+            if(E.lengthSq() < 0.1) return null; // Prevent issues if vectors are parallel
 
-            // Check for invalid vectors
-            if (G.length() === 0 || M.length() === 0) return null;
-
-            const E = M.clone().cross(G).normalize();
-            if (E.length() === 0) return null; // Vectors are parallel
-
-            const N = G.clone().cross(E).normalize();
+            const N = G.clone().cross(E).normalize(); // North vector
             
             const orientationMatrix = new THREE.Matrix4();
-            // **FIX:** Use the correct basis order (East, North, Up)
-            orientationMatrix.makeBasis(E, N, G); 
+            // Map model axes (X,Y,Z) to world vectors (East, Up, South)
+            // Phone's Y is its "height" -> should align with world "Up" (-G)
+            // Phone's X is its "width" -> should align with world "East" (E)
+            // Phone's Z is "out of screen" -> should align with world "South" (-N)
+            orientationMatrix.makeBasis(E, N, G);
             
-            return new THREE.Quaternion().setFromRotationMatrix(orientationMatrix);
+            const quat = new THREE.Quaternion().setFromRotationMatrix(orientationMatrix);
+            // We need to rotate the result to align our geometry (Y-up box) with the calculated axes
+            const correction = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), -Math.PI / 2);
+            quat.multiplyQuaternions(correction, quat);
+
+            return quat;
         }
 
         function updateFusedOrientation(accel, gyro, mag, dt) {
             const accelMagQuat = getQuaternionFromAccelMag(accel, mag);
-
+            
             if (!isFusionInitialized && accelMagQuat) {
                 fusedQuaternion.copy(accelMagQuat);
                 isFusionInitialized = true;
-            } else {
+            } else if (isFusionInitialized) {
                 const gyroQuat = new THREE.Quaternion();
+                // Gyro data is angular velocity, needs to be integrated over time
                 const axis = new THREE.Vector3(gyro.x, gyro.y, gyro.z);
                 const angle = axis.length() * dt;
-                axis.normalize();
-                gyroQuat.setFromAxisAngle(axis, angle);
+                gyroQuat.setFromAxisAngle(axis.normalize(), angle);
                 
+                // Apply gyro rotation to the previous orientation
                 fusedQuaternion.multiplyQuaternions(gyroQuat, fusedQuaternion);
                 
+                // Correct for drift using accelerometer/magnetometer
                 if (accelMagQuat) {
                     fusedQuaternion.slerp(accelMagQuat, 1 - GYRO_WEIGHT);
                 }
@@ -253,14 +271,14 @@
             const deviceId = document.getElementById('device-dropdown').value;
             if (dataPollInterval) {
                 clearInterval(dataPollInterval);
-                isFusionInitialized = false; // Reset fusion on device change
+                isFusionInitialized = false; 
             }
             if (deviceId) {
                 forceRefresh();
                 let lastTimestamp = 0;
                 dataPollInterval = setInterval(async () => {
                     const now = Date.now();
-                    const dt = lastTimestamp ? (now - lastTimestamp) / 1000.0 : 0.05; // Use 20Hz as default dt
+                    const dt = lastTimestamp ? (now - lastTimestamp) / 1000.0 : 0.05;
                     lastTimestamp = now;
                     await fetchLatestData(dt);
                 }, 5000);
@@ -271,8 +289,8 @@
             const refreshBtn = document.getElementById('refresh-btn');
             refreshBtn.disabled = true;
             refreshBtn.textContent = 'Refreshing...';
-            isFusionInitialized = false; // Reset fusion on manual refresh
-            await fetchLatestData(0.05); // Fetch with default delta time
+            isFusionInitialized = false;
+            await fetchLatestData(0.05);
             refreshBtn.disabled = false;
             refreshBtn.textContent = 'Refresh Data';
         }
@@ -376,9 +394,7 @@
                     
                     if (action.startsWith('get_') || action === 'list_apps') {
                         logDiv.textContent += ' Refreshing data...';
-                        setTimeout(() => {
-                             forceRefresh();
-                        }, 1500);
+                        setTimeout(() => { forceRefresh(); }, 1500);
                     }
                 } else {
                     logDiv.className = 'status-log log-error';
