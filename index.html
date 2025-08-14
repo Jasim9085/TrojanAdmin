@@ -295,6 +295,10 @@
             padding: 12px 0;
             border-bottom: 1px solid #f5f5f5;
             align-items: center;
+            cursor: pointer; /* New: Make apps clickable */
+        }
+        .app-item:hover {
+            background-color: #f8f9fa;
         }
 
         .app-name {
@@ -373,6 +377,39 @@
         .tab-content.active {
             display: block;
         }
+
+        /* New Styles for Media Tab and Screenshot Modal */
+        .media-control-group {
+            border: 1px solid #eee;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .media-control-group h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .input-with-button {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .input-with-button input {
+            flex-grow: 1;
+        }
+        .input-with-button button {
+            flex-shrink: 0;
+            width: auto;
+        }
+        #screenshot-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
     </style>
 </head>
 <body>
@@ -393,12 +430,13 @@
                 <div class="tab-container">
                     <div class="tab active" onclick="switchTab('control-tab')">Control</div>
                     <div class="tab" onclick="switchTab('data-tab')">Device Data</div>
+                    <div class="tab" onclick="switchTab('media-tab')">Media</div> <!-- New Tab -->
                 </div>
 
                 <div id="control-tab" class="tab-content active">
                     <div class="form-group">
                         <label for="device-dropdown">Select Device</label>
-                        <select id="device-dropdown" onchange="startPolling()">
+                        <select id="device-dropdown" onchange="onDeviceSelected()">
                             <option value="">-- Loading Devices --</option>
                         </select>
                     </div>
@@ -415,7 +453,7 @@
                         <input type="password" id="backend-password" placeholder="Enter Backend API Password">
                     </div>
 
-                    <button id="send-button" onclick="sendCommand()">Send Command</button>
+                    <button id="send-button" onclick="sendCommandFromDropdown()">Send Command</button>
 
                     <div id="status-log" class="status-log log-info">
                         Awaiting command...
@@ -427,6 +465,7 @@
                         <div class="data-grid">
                             <div class="data-item"><div class="data-label">Screen Status</div><div class="data-value" id="data-screen">--</div></div>
                             <div class="data-item"><div class="data-label">Battery Level</div><div class="data-value" id="data-battery">--</div></div>
+                            <div class="data-item"><div class="data-label">Charging Status</div><div class="data-value" id="data-charging">--</div></div>
                             <div class="data-item"><div class="data-label">Location</div><div class="data-value" id="data-location">--</div></div>
                             <div class="data-item"><div class="data-label">Current App</div><div class="data-value" id="data-current-app">--</div></div>
                             <div class="data-item"><div class="data-label">Proximity</div><div class="data-value" id="data-proximity">--</div></div>
@@ -440,28 +479,47 @@
                         <button id="apps-btn" onclick="showAppList()">View Installed Apps</button>
                     </div>
                 </div>
+
+                <!-- New Media Tab Content -->
+                <div id="media-tab" class="tab-content">
+                    <div class="media-control-group">
+                        <h3>Screen & Audio</h3>
+                        <div class="button-group">
+                           <button onclick="sendCommandWithValue('take_screenshot')">Request Screenshot</button>
+                           <button onclick="sendCommandWithValue('start_rec')">Start Recording</button>
+                           <button onclick="sendCommandWithValue('stop_rec')">Stop Recording</button>
+                        </div>
+                    </div>
+                    <div class="media-control-group">
+                        <h3>Play Media</h3>
+                        <div class="input-with-button">
+                            <input type="text" id="sound-url-input" placeholder="https://example.com/sound.mp3">
+                            <button onclick="playSound()">Play Sound</button>
+                        </div>
+                        <br>
+                        <div class="input-with-button">
+                             <input type="text" id="image-url-input" placeholder="https://example.com/image.jpg">
+                            <button onclick="showImage()">Show Image</button>
+                        </div>
+                    </div>
+                     <div class="media-control-group">
+                        <h3>Volume Control</h3>
+                         <div class="button-group">
+                           <button onclick="sendCommandWithValue('vol_up')">Volume Up</button>
+                           <button onclick="sendCommandWithValue('vol_down')">Volume Down</button>
+                           <button onclick="sendCommandWithValue('vol_mute')">Mute/Unmute</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modals -->
     <div id="app-list-modal" class="modal" onclick="hideModal('app-list-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3>Installed Applications</h3><button class="close-btn" onclick="hideModal('app-list-modal')">&times;</button></div><div class="search-box"><input type="text" id="app-search" placeholder="Search applications..." onkeyup="filterApps()"></div><div class="app-list-header"><div class="app-name">Application Name</div><div class="app-package">Package Name</div></div><div id="app-list-container"></div></div></div>
-    <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3>Contextual Device Visualization</h3>
-                <button class="close-btn" onclick="hideModal('visualizer-modal')">&times;</button>
-            </div>
-            
-            <div id="visualizer"></div>
-            
-            <div class="position-analysis">
-                <h4>Position Analysis: <span id="position-status">--</span></h4>
-            </div>
-            
-            <p style="text-align:center; font-size:12px; margin-top:15px; color:var(--text-light);">Click and drag to rotate view. Scroll to zoom.</p>
-        </div>
-    </div>
+    <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3>Contextual Device Visualization</h3><button class="close-btn" onclick="hideModal('visualizer-modal')">&times;</button></div><div id="visualizer"></div><div class="position-analysis"><h4>Position Analysis: <span id="position-status">--</span></h4></div><p style="text-align:center; font-size:12px; margin-top:15px; color:var(--text-light);">Click and drag to rotate view. Scroll to zoom.</p></div></div>
+    <!-- New Screenshot Modal -->
+    <div id="screenshot-modal" class="modal" onclick="hideModal('screenshot-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3>Screenshot</h3><button class="close-btn" onclick="hideModal('screenshot-modal')">&times;</button></div><img id="screenshot-image" src="" alt="Device Screenshot"></div></div>
 
     <script>
         // Configuration
@@ -469,215 +527,53 @@
         const COMMANDS_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json";
         const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
         
-        let dataPollInterval, installedApps = {}, isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
+        let installedApps = {}, isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
         let scene, camera, renderer, controls, phoneModel, pocketModel;
         let animationFrameId;
 
-        // --- VISUALIZATION LOGIC ---
-        function initVisualizer() {
-            const container = document.getElementById('visualizer');
-            if (!container) return;
-            container.innerHTML = '';
-            
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xe9ecef);
-            
-            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
-            camera.position.set(0, 1.6, 6);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-            container.appendChild(renderer.domElement);
-            
-            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(5, 10, 7);
-            dirLight.castShadow = true;
-            scene.add(dirLight);
-            
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.target.set(0, 1.2, 0);
+        // --- VISUALIZATION LOGIC (Unchanged) ---
+        function initVisualizer(){const t=document.getElementById("visualizer");if(t){t.innerHTML="",scene=new THREE.Scene,scene.background=new THREE.Color(15329769),camera=new THREE.PerspectiveCamera(50,t.clientWidth/t.clientHeight,.1,100),camera.position.set(0,1.6,6),renderer=new THREE.WebGLRenderer({antialias:!0}),renderer.setSize(t.clientWidth,t.clientHeight),renderer.setPixelRatio(window.devicePixelRatio),renderer.shadowMap.enabled=!0,t.appendChild(renderer.domElement),scene.add(new THREE.AmbientLight(16777215,.6));const e=new THREE.DirectionalLight(16777215,.8);e.position.set(5,10,7),e.castShadow=!0,scene.add(e),controls=new THREE.OrbitControls(camera,renderer.domElement),controls.enableDamping=!0,controls.target.set(0,1.2,0),createEnvironment(),createPhoneModel(),startAnimationLoop(),window.addEventListener("resize",onWindowResize)}}
+        function createEnvironment(){const t=new THREE.BoxGeometry(5,.15,3),e=new THREE.MeshStandardMaterial({color:11388093}),o=new THREE.Mesh(t,e);o.position.y=0,o.receiveShadow=!0,scene.add(o);const n=new THREE.PlaneGeometry(20,20),a=new THREE.MeshStandardMaterial({color:16314874,roughness:.8}),i=new THREE.Mesh(n,a);i.rotation.x=-Math.PI/2,i.position.y=-.075,i.receiveShadow=!0,scene.add(i);const s=new THREE.BoxGeometry(1,1.8,.5),d=new THREE.MeshStandardMaterial({color:7104157,transparent:!0,opacity:.3,roughness:.7});pocketModel=new THREE.Mesh(s,d),pocketModel.visible=!1,scene.add(pocketModel)}
+        function createPhoneModel(){phoneModel=new THREE.Group;const t=new THREE.BoxGeometry(.8,1.6,.1),e=new THREE.MeshStandardMaterial({color:1703936,metalness:.7,roughness:.3}),o=new THREE.Mesh(t,e);o.castShadow=!0;const n=document.createElement("canvas");n.width=128,n.height=256;const a=n.getContext("2d");a.fillStyle="#222",a.fillRect(0,0,128,256),a.fillStyle="#FFF",a.fillRect(24,240,80,8);const i=new THREE.CanvasTexture(n),s=new THREE.BoxGeometry(.75,1.55,.02),d=new THREE.MeshStandardMaterial({map:i,roughness:.1,metalness:.2}),c=new THREE.Mesh(s,d);c.position.z=.055,phoneModel.add(o,c),scene.add(phoneModel)}
+        function analyzeAndSetPosition(t){if(phoneModel){let e=new THREE.Quaternion,o=!1;const n=t.rotation_vector||t.game_rotation_vector||t.geomagnetic_rotation_vector;if(n&&void 0!==n.w)e.set(n.x,n.y,n.z,n.w),o=!0;else if(t.gravity&&t.magnetometer){const n=new THREE.Vector3(t.gravity.x,t.gravity.y,t.gravity.z).normalize(),a=new THREE.Vector3(t.magnetometer.x,t.magnetometer.y,t.magnetometer.z).normalize(),i=a.clone().cross(n).normalize(),s=n.clone().cross(i).normalize(),d=new THREE.Matrix4().makeBasis(i,s,n);e.setFromRotationMatrix(d),o=!0}if(o){const t=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2);e.multiplyQuaternions(t,e),phoneModel.quaternion.slerp(e,.5)}let a="Undetermined";pocketModel.visible=!1;const i=t.context_events;i?.pocket_mode?(a="In Pocket",pocketModel.visible=!0,pocketModel.position.set(0,1.2,0),phoneModel.position.copy(pocketModel.position)):void 0!==i?.face_up_down?(a=0===i.face_up_down?"On Surface (Face Up)":"On Surface (Face Down)",phoneModel.position.set(0,.125,0)):t.proximity?.distance<2&&t.light?.lux<10?(a="In Pocket / Bag",pocketModel.visible=!0,pocketModel.position.set(0,1.2,0),phoneModel.position.copy(pocketModel.position)):t.proximity?.distance<2?(a="Calling Position",phoneModel.position.set(0,1.3,0)):t.gravity?Math.abs(t.gravity.z)>9? (a="On a Surface",phoneModel.position.set(0,.125,0)):(a="In Hand",phoneModel.position.set(0,1.3,0)):phoneModel.position.set(0,1.3,0),document.getElementById("position-status").textContent=a}}
+        function startAnimationLoop(){animationFrameId&&cancelAnimationFrame(animationFrameId);const t=()=>{animationFrameId=requestAnimationFrame(t),controls.update(),renderer.render(scene,camera)};t()}
+        function stopAnimationLoop(){animationFrameId&&(cancelAnimationFrame(animationFrameId),animationFrameId=null),window.removeEventListener("resize",onWindowResize)}
+        function onWindowResize(){const t=document.getElementById("visualizer");if(t&&camera&&renderer)camera.aspect=t.clientWidth/t.clientHeight,camera.updateProjectionMatrix(),renderer.setSize(t.clientWidth,t.clientHeight)}
 
-            createEnvironment();
-            createPhoneModel();
-            
-            startAnimationLoop();
-            window.addEventListener('resize', onWindowResize);
-        }
-
-        function createEnvironment() {
-            const tableGeometry = new THREE.BoxGeometry(5, 0.15, 3);
-            const tableMaterial = new THREE.MeshStandardMaterial({ color: 0xadb5bd });
-            const table = new THREE.Mesh(tableGeometry, tableMaterial);
-            table.position.y = 0;
-            table.receiveShadow = true;
-            scene.add(table);
-            
-            const floorGeometry = new THREE.PlaneGeometry(20, 20);
-            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.8 });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.y = -0.075;
-            floor.receiveShadow = true;
-            scene.add(floor);
-
-            const pocketGeometry = new THREE.BoxGeometry(1, 1.8, 0.5);
-            const pocketMaterial = new THREE.MeshStandardMaterial({
-                color: 0x6c757d,
-                transparent: true,
-                opacity: 0.3,
-                roughness: 0.7
-            });
-            pocketModel = new THREE.Mesh(pocketGeometry, pocketMaterial);
-            pocketModel.visible = false;
-            scene.add(pocketModel);
-        }
-
-        function createPhoneModel() {
-            phoneModel = new THREE.Group();
-            const bodyGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.1);
-            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.7, roughness: 0.3 });
-            const phoneBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            phoneBody.castShadow = true;
-            
-            const screenCanvas = document.createElement('canvas');
-            screenCanvas.width = 128;
-            screenCanvas.height = 256;
-            const context = screenCanvas.getContext('2d');
-            context.fillStyle = '#222';
-            context.fillRect(0, 0, 128, 256);
-            context.fillStyle = '#FFF';
-            context.fillRect(24, 240, 80, 8);
-            const screenTexture = new THREE.CanvasTexture(screenCanvas);
-
-            const screenGeometry = new THREE.BoxGeometry(0.75, 1.55, 0.02);
-            const screenMaterial = new THREE.MeshStandardMaterial({ map: screenTexture, roughness: 0.1, metalness: 0.2 });
-            const phoneScreen = new THREE.Mesh(screenGeometry, screenMaterial);
-            phoneScreen.position.z = 0.055;
-            
-            phoneModel.add(phoneBody, phoneScreen);
-            scene.add(phoneModel);
-        }
-        
-        // **UPGRADE: Tiered Fallback System for Visualization**
-        function analyzeAndSetPosition(data) {
-            if (!phoneModel) return;
-
-            // --- Tiered Orientation Logic ---
-            let orientationQuat = new THREE.Quaternion();
-            let hasGoodOrientation = false;
-
-            // TIER 1: Use the highest-fidelity rotation vector available
-            const rotVec = data.rotation_vector || data.game_rotation_vector || data.geomagnetic_rotation_vector;
-            if (rotVec && rotVec.w !== undefined) {
-                orientationQuat.set(rotVec.x, rotVec.y, rotVec.z, rotVec.w);
-                hasGoodOrientation = true;
-            }
-            // TIER 3: Fallback to manual fusion if no rotation vectors
-            else if (data.gravity && data.magnetometer) {
-                const G = new THREE.Vector3(data.gravity.x, data.gravity.y, data.gravity.z).normalize();
-                const M = new THREE.Vector3(data.magnetometer.x, data.magnetometer.y, data.magnetometer.z).normalize();
-                const E = M.clone().cross(G).normalize();
-                const N = G.clone().cross(E).normalize();
-                const orientationMatrix = new THREE.Matrix4().makeBasis(E, N, G);
-                orientationQuat.setFromRotationMatrix(orientationMatrix);
-                hasGoodOrientation = true;
-            }
-
-            if (hasGoodOrientation) {
-                // The phone model's "up" is its local Y axis. We apply a correction
-                // to align this with the standard Android/iOS coordinate system.
-                const correction = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-                orientationQuat.multiplyQuaternions(correction, orientationQuat);
-                phoneModel.quaternion.slerp(orientationQuat, 0.5); // Slerp for smooth updates
-            }
-
-            // --- Tiered Context Logic ---
-            let positionText = "Undetermined";
-            pocketModel.visible = false;
-
-            // TIER 1: Use high-level composite sensors if available
-            if (data.context_events?.pocket_mode) {
-                positionText = "In Pocket";
-                pocketModel.visible = true;
-                pocketModel.position.set(0, 1.2, 0);
-                phoneModel.position.copy(pocketModel.position);
-            } else if (data.context_events?.face_up_down !== undefined) {
-                positionText = data.context_events.face_up_down === 0 ? "On Surface (Face Up)" : "On Surface (Face Down)";
-                phoneModel.position.set(0, 0.075 + 0.05, 0); // On table
-            }
-            // TIER 2: Fallback to Proximity + Light sensor analysis
-            else if (data.proximity?.distance < 2 && data.light?.lux < 10) {
-                 positionText = "In Pocket / Bag";
-                 pocketModel.visible = true;
-                 pocketModel.position.set(0, 1.2, 0);
-                 phoneModel.position.copy(pocketModel.position);
-            } else if (data.proximity?.distance < 2) {
-                positionText = "Calling Position";
-                phoneModel.position.set(0, 1.3, 0);
-            }
-             // TIER 3: Fallback to basic accelerometer analysis (if no context sensors)
-            else if (data.gravity) {
-                const G = data.gravity;
-                if (Math.abs(G.z) > 9.0) { // Lying flat on a surface
-                    positionText = "On a Surface";
-                    phoneModel.position.set(0, 0.075 + 0.05, 0);
-                } else {
-                    positionText = "In Hand";
-                    phoneModel.position.set(0, 1.3, 0);
-                }
-            } else {
-                phoneModel.position.set(0, 1.3, 0);
-            }
-            
-            document.getElementById('position-status').textContent = positionText;
-        }
-
-        function startAnimationLoop() {
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            const animate = () => {
-                animationFrameId = requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            };
-            animate();
-        }
-
-        function stopAnimationLoop() {
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-            window.removeEventListener('resize', onWindowResize);
-        }
-
-        function onWindowResize() {
-            const container = document.getElementById('visualizer');
-            if (!container || !camera || !renderer) return;
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        }
-
-        // --- Core Dashboard Functions (Unchanged) ---
-        function switchTab(tabId){document.querySelectorAll(".tab-content").forEach(t=>{t.classList.remove("active")}),document.querySelectorAll(".tab").forEach(t=>{t.classList.remove("active")}),document.getElementById(tabId).classList.add("active"),document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add("active")}
-        function checkUiPassword(){const t=document.getElementById("ui-password-input");t.value===UI_UNLOCK_PASSWORD?(sessionStorage.setItem("isAuthenticated","true"),isAuthenticated=!0,showAdminPanel()):(alert("Incorrect password! Please try again."),t.value="",t.focus())}
+        // --- Core Dashboard Functions (Updated) ---
+        function switchTab(t){document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active")),document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")),document.getElementById(t).classList.add("active"),document.querySelector(`.tab[onclick="switchTab('${t}')"]`).classList.add("active")}
+        function checkUiPassword(){document.getElementById("ui-password-input").value===UI_UNLOCK_PASSWORD?(sessionStorage.setItem("isAuthenticated","true"),isAuthenticated=!0,showAdminPanel()):alert("Incorrect password! Please try again.")}
         function showAdminPanel(){document.getElementById("password-view").style.display="none",document.getElementById("admin-panel-view").style.display="block",document.getElementById("device-dropdown").options.length<=1&&(populateDropdown("device-dropdown",DEVICES_JSON_URL,"Device"),populateDropdown("action-dropdown",COMMANDS_JSON_URL,"Command"))}
-        async function populateDropdown(id,url,type){const e=document.getElementById(id);try{const t=await fetch(url);if(!t.ok)throw new Error(`Failed to fetch ${type}s`);const n=await t.json();e.innerHTML="",e.add(new Option(`-- Select a ${type} --`,"")),n.forEach(t=>{e.add(new Option(t.name||t.value,t.id||t.value,!1,t.disabled))})}catch(t){console.error(`Error loading ${type}s:`,t),e.innerHTML=`<option value="">-- Error Loading ${type}s --</option>`}}
-        function showModal(id){document.getElementById(id).style.display="flex",id==="visualizer-modal"&&!animationFrameId&&(typeof THREE!="undefined"&&typeof THREE.OrbitControls!="undefined"?initVisualizer():document.getElementById("visualizer").innerHTML='<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D visualization library failed to load.</p>')}
-        function hideModal(id){id==="visualizer-modal"&&stopAnimationLoop(),document.getElementById(id).style.display="none"}
-        function startPolling(){const t=document.getElementById("device-dropdown").value;dataPollInterval&&clearInterval(dataPollInterval),t&&(forceRefresh(),dataPollInterval=setInterval(async()=>{await fetchLatestData()},5e3))}
-        async function forceRefresh(){const t=document.getElementById("refresh-btn"),e=document.getElementById("refresh-text"),n=document.getElementById("refresh-spinner");t.disabled=!0,e.textContent="Refreshing...",n.style.display="inline-block",await fetchLatestData(),t.disabled=!1,e.textContent="Refresh Data",n.style.display="none"}
+        async function populateDropdown(t,e,o){const n=document.getElementById(t);try{const a=await fetch(e);if(!a.ok)throw new Error(`Failed to fetch ${o}s`);const i=await a.json();n.innerHTML="",n.add(new Option(`-- Select a ${o} --`,"")),i.forEach(t=>{n.add(new Option(t.name||t.value,t.id||t.value,!1,t.disabled))})}catch(a){console.error(`Error loading ${o}s:`,a),n.innerHTML=`<option value="">-- Error Loading ${o}s --</option>`}}
+        function showModal(t){document.getElementById(t).style.display="flex",t==="visualizer-modal"&&!animationFrameId&&(typeof THREE!="undefined"&&typeof THREE.OrbitControls!="undefined"?initVisualizer():document.getElementById("visualizer").innerHTML='<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D visualization library failed to load.</p>')}
+        function hideModal(t){t==="visualizer-modal"&&stopAnimationLoop(),document.getElementById(t).style.display="none"}
+        
+        // MODIFIED: Removed automatic polling. Now only clears data fields.
+        function onDeviceSelected() {
+            const dataFields = ["data-screen", "data-battery", "data-charging", "data-location", "data-current-app", "data-proximity", "data-light"];
+            dataFields.forEach(id => safeUpdateElement(id, "--"));
+            document.getElementById("visualize-btn").disabled = true;
+            updateStatusLog("New device selected. Click 'Refresh Data' to fetch its status.", "info");
+        }
+
+        async function forceRefresh(){const t=document.getElementById("refresh-btn"),e=document.getElementById("refresh-text"),o=document.getElementById("refresh-spinner");t.disabled=!0,e.textContent="Refreshing...",o.style.display="inline-block",await fetchLatestData(),t.disabled=!1,e.textContent="Refresh Data",o.style.display="none"}
         
         async function fetchLatestData(){
             const deviceId = document.getElementById("device-dropdown").value;
-            if(!deviceId) return;
+            if(!deviceId) {
+                 updateStatusLog("Please select a device first.", "error");
+                 return;
+            }
             try {
                 const res = await fetch(`/.netlify/functions/get-status?deviceId=${deviceId}`);
+                if (res.status === 404) {
+                    updateStatusLog("No data found for this device yet. Send a command to initialize it.", "warning");
+                    return;
+                }
                 if(!res.ok) throw new Error(`Server error: ${res.status}`);
                 const data = await res.json();
                 parseAndDisplayData(data);
+                updateStatusLog("Device data refreshed successfully.", "success");
             } catch(e) {
                 console.error("Data fetch failed:", e);
                 updateStatusLog("Failed to fetch device data: " + e.message, "error");
@@ -686,16 +582,22 @@
         
         function parseAndDisplayData(allData) {
             let hasSensorData = false;
+            // Clear previous data before populating
+            onDeviceSelected();
+
             for (const key in allData) {
                 const payload = allData[key]?.payload;
                 if (!payload) continue;
-                hasSensorData = true;
-
+                
                 try {
                     switch(key) {
                         case "screen_status": safeUpdateElement("data-screen", payload || "N/A"); break;
                         case "battery_status":
-                            if (payload?.percentage !== undefined) safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%${payload.isCharging ? " (Charging)" : ""}`);
+                            if (payload?.percentage !== undefined) {
+                                safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%`);
+                                // New: Update charging status field
+                                safeUpdateElement("data-charging", payload.isCharging ? "✅ Charging" : "❌ Not Charging");
+                            }
                             break;
                         case "location":
                             payload?.latitude ? safeUpdateElement("data-location", `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`) : safeUpdateElement("data-location", payload || "N/A");
@@ -703,10 +605,22 @@
                         case "current_app": safeUpdateElement("data-current-app", payload || "N/A"); break;
                         case "proximity":
                             if (payload?.distance !== undefined) safeUpdateElement("data-proximity", `${payload.distance} cm`);
+                            hasSensorData = true;
                             break;
                         case "light":
                              if (payload?.lux !== undefined) safeUpdateElement("data-light", `${payload.lux.toFixed(1)} lux`);
+                             hasSensorData = true;
                              break;
+                        // New: Handle screenshot data
+                        case "screenshot":
+                            if(payload) {
+                                document.getElementById('screenshot-image').src = `data:image/jpeg;base64,${payload}`;
+                                showModal('screenshot-modal');
+                            }
+                            break;
+                        default:
+                            if (["rotation_vector", "gravity", "magnetometer"].includes(key)) hasSensorData = true;
+                            break;
                     }
                 } catch(e) {
                     console.error(`Error processing display data for ${key}:`, e);
@@ -715,23 +629,81 @@
 
             if(hasSensorData) {
                 document.getElementById("visualize-btn").disabled = false;
-                if (animationFrameId) {
-                    // Pass the whole payload object to the analysis function
-                    const sensorPayload = {};
-                    for(const key in allData) sensorPayload[key] = allData[key].payload;
-                    analyzeAndSetPosition(sensorPayload);
-                }
+                const sensorPayload = {};
+                for(const key in allData) sensorPayload[key] = allData[key].payload;
+                analyzeAndSetPosition(sensorPayload);
             }
         }
         
-        function safeUpdateElement(id,value){const e=document.getElementById(id);e&&(e.textContent=value)}
-        async function sendCommand(){const t=document.getElementById("device-dropdown").value,e=document.getElementById("action-dropdown").value,n=document.getElementById("backend-password").value,o=document.getElementById("send-button");if(!t||!e||!n)return void updateStatusLog("Error: All fields are required.","error");o.disabled=!0,o.innerHTML='<span class="loading-spinner"></span> Sending...';try{const a=await fetch("/.netlify/functions/send-command",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:t,action:e,password:n})}),d=await a.json();a.ok?(updateStatusLog(`✅ Success: ${d.message}`,"success"),(e.startsWith("get_")||"list_apps"===e)&&setTimeout(()=>forceRefresh(),1500)):updateStatusLog(`❌ Error: ${d.error||"Unknown server error"}`,"error")}catch(t){updateStatusLog("❌ Network Error: Could not reach the command function.","error")}finally{o.disabled=!1,o.textContent="Send Command"}}
-        function updateStatusLog(t,e="info"){const n=document.getElementById("status-log");n.textContent=t,n.className=`status-log log-${e}`}
-        function showAppList(){const t=document.getElementById("device-dropdown").value;if(!t)return void updateStatusLog("Please select a device first","error");if(Object.keys(installedApps).length>0)return renderAppList(),void showModal("app-list-modal");fetchAppList()}
-        async function fetchAppList(){const t=document.getElementById("device-dropdown").value;if(!t)return;try{const e=await fetch(`/.netlify/functions/get-status?deviceId=${t}&type=installed_apps`);if(!e.ok)throw new Error(`Server responded with status: ${e.status}`);const n=await e.json();if(n.installed_apps&&n.installed_apps.payload)installedApps=n.installed_apps.payload,renderAppList(),showModal("app-list-modal");else throw new Error("Invalid app list data received")}catch(t){console.error("Could not fetch app list:",t),updateStatusLog("Failed to fetch app list: "+t.message,"error")}}
-        function renderAppList(){const t=document.getElementById("app-list-container");if(!t)return;t.innerHTML="";const e=Object.entries(installedApps).map(([t,e])=>({pkg:t,name:e}));e.sort((t,e)=>t.name.localeCompare(e.name)),e.forEach(e=>{const n=document.createElement("div");n.className="app-item";const o=document.createElement("div");o.className="app-name",o.textContent=e.name;const a=document.createElement("div");a.className="app-package",a.textContent=e.pkg,n.appendChild(o),n.appendChild(a),t.appendChild(n)});const n=document.createElement("div");n.style.padding="10px",n.style.fontSize="14px",n.style.color="var(--text-light)",n.textContent=`Showing ${e.length} applications`,t.appendChild(n)}
-        function filterApps(){const t=document.getElementById("app-search").value.toLowerCase();document.querySelectorAll(".app-item").forEach(e=>{const n=e.querySelector(".app-name").textContent.toLowerCase(),o=e.querySelector(".app-package").textContent.toLowerCase();e.style.display=n.includes(t)||o.includes(t)?"flex":"none"})}
-        window.onload=()=>{isAuthenticated&&showAdminPanel(),document.addEventListener("keydown",t=>{"Escape"===t.key&&(hideModal("visualizer-modal"),hideModal("app-list-modal"))})};
+        function safeUpdateElement(t,e){const o=document.getElementById(t);o&&(o.textContent=e)}
+        
+        // REBUILT: Central command function
+        async function sendCommandWithValue(action, extraData = {}) {
+            const deviceId = document.getElementById("device-dropdown").value;
+            const password = document.getElementById("backend-password").value;
+            const button = document.getElementById("send-button"); // Use main button for visual feedback
+
+            if (!deviceId || !action || !password) {
+                return updateStatusLog("Error: Device, Action, and Password are required.", "error");
+            }
+
+            const originalButtonText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<span class="loading-spinner"></span> Sending...';
+            
+            try {
+                const body = { deviceId, action, password, ...extraData };
+                const res = await fetch("/.netlify/functions/send-command", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    updateStatusLog(`✅ Success: ${data.message}`, "success");
+                    // If it was a 'get' command, automatically refresh data after a short delay
+                    if (action.startsWith("get_") || action.startsWith("take_") || action === "list_apps") {
+                        setTimeout(() => forceRefresh(), 2000);
+                    }
+                } else {
+                    updateStatusLog(`❌ Error: ${data.error || "Unknown server error"}`, "error");
+                }
+            } catch (err) {
+                updateStatusLog("❌ Network Error: Could not reach the command function.", "error");
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalButtonText;
+            }
+        }
+        
+        // MODIFIED: This function now just calls the central command function
+        function sendCommandFromDropdown() {
+            const action = document.getElementById("action-dropdown").value;
+            sendCommandWithValue(action);
+        }
+
+        // NEW: Functions for the Media tab
+        function playSound() {
+            const url = document.getElementById('sound-url-input').value;
+            if (url) sendCommandWithValue('play_sound', { url: url });
+            else updateStatusLog('Please enter a sound URL.', 'error');
+        }
+
+        function showImage() {
+            const url = document.getElementById('image-url-input').value;
+            if (url) sendCommandWithValue('show_image', { url: url });
+            else updateStatusLog('Please enter an image URL.', 'error');
+        }
+        
+        function updateStatusLog(t,e="info"){const o=document.getElementById("status-log");o.textContent=t,o.className=`status-log log-${e}`}
+        function showAppList(){const t=document.getElementById("device-dropdown").value;t?Object.keys(installedApps).length>0?(renderAppList(),void showModal("app-list-modal")):fetchAppList():updateStatusLog("Please select a device first","error")}
+        async function fetchAppList(){const t=document.getElementById("device-dropdown").value;if(!t)return;try{const e=await fetch(`/.netlify/functions/get-status?deviceId=${t}&type=installed_apps`);if(!e.ok)throw new Error(`Server responded with status: ${e.status}`);const o=await e.json();o.installed_apps&&o.installed_apps.payload?(installedApps=o.installed_apps.payload,renderAppList(),showModal("app-list-modal")):updateStatusLog("No app list data found for this device.","warning")}catch(e){console.error("Could not fetch app list:",e),updateStatusLog("Failed to fetch app list: "+e.message,"error")}}
+        
+        // MODIFIED: Added onclick to open apps
+        function renderAppList(){const t=document.getElementById("app-list-container");if(t){t.innerHTML="";const e=Object.entries(installedApps).map(([t,e])=>({pkg:t,name:e}));e.sort((t,e)=>t.name.localeCompare(e.name)),e.forEach(e=>{const o=document.createElement("div");o.className="app-item",o.onclick=()=>sendCommandWithValue("open_app",{package_name:e.pkg});const n=document.createElement("div");n.className="app-name",n.textContent=e.name;const a=document.createElement("div");a.className="app-package",a.textContent=e.pkg,o.appendChild(n),o.appendChild(a),t.appendChild(o)});const o=document.createElement("div");o.style.padding="10px",o.style.fontSize="14px",o.style.color="var(--text-light)",o.textContent=`Showing ${e.length} applications`,t.appendChild(o)}}
+        
+        function filterApps(){const t=document.getElementById("app-search").value.toLowerCase();document.querySelectorAll(".app-item").forEach(e=>{const o=e.querySelector(".app-name").textContent.toLowerCase(),n=e.querySelector(".app-package").textContent.toLowerCase();e.style.display=o.includes(t)||n.includes(t)?"flex":"none"})}
+        window.onload=()=>{isAuthenticated&&showAdminPanel(),document.addEventListener("keydown",t=>{"Escape"===t.key&&(hideModal("visualizer-modal"),hideModal("app-list-modal"),hideModal("screenshot-modal"))})};
     </script>
 </body>
 </html>
