@@ -1139,73 +1139,79 @@
             let accel = {}, gyro = {}, mag = {};
             
             for (const dataType in data) {
-                const payload = data[dataType].payload;
-                
-                switch(dataType) {
-                    case "screen_status":
-                        document.getElementById('data-screen').textContent = payload || 'N/A';
-                        break;
-                        
-                    case "battery_status":
-                        if (payload?.percentage !== undefined) {
-                            const batteryText = `${payload.percentage.toFixed(0)}%`;
-                            const chargingStatus = payload.isCharging ? " (Charging)" : "";
-                            document.getElementById('data-battery').textContent = batteryText + chargingStatus;
-                        }
-                        break;
-                        
-                    case "location":
-                        if (payload?.latitude) {
-                            document.getElementById('data-location').textContent = 
-                                `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`;
-                        } else {
-                            document.getElementById('data-location').textContent = payload || 'N/A';
-                        }
-                        break;
-                        
-                    case "current_app":
-                        document.getElementById('data-current-app').textContent = payload || 'N/A';
-                        break;
-                        
-                    case "proximity":
-                        if (payload?.distance !== undefined) {
-                            document.getElementById('data-proximity').textContent = `${payload.distance} cm`;
-                        }
-                        break;
-                        
-                    case "installed_apps":
-                        if (isManualTrigger && typeof payload === 'object') {
-                            installedApps = payload;
-                            renderAppList();
-                            showModal('app-list-modal');
-                        }
-                        break;
-                        
-                    case "accelerometer":
-                    case "gyroscope":
-                    case "magnetometer_compass":
-                        if (payload?.x !== undefined) {
-                            // Update individual sensor displays
-                            const prefix = dataType.replace('_compass', '');
-                            document.getElementById(`${prefix}-x`).textContent = payload.x.toFixed(2);
-                            document.getElementById(`${prefix}-y`).textContent = payload.y.toFixed(2);
-                            document.getElementById(`${prefix}-z`).textContent = payload.z.toFixed(2);
+                const payload = data[dataType]?.payload;
+                if (!payload) continue;
+        
+                try {
+                    switch(dataType) {
+                        case "screen_status":
+                            safeUpdateElement('data-screen', payload || 'N/A');
+                            break;
                             
-                            // Enable visualization button
-                            document.getElementById('visualize-btn').disabled = false;
-                            
-                            // Store sensor data for fusion
-                            if (dataType === "accelerometer") accel = payload;
-                            if (dataType === "gyroscope") {
-                                gyro = {
-                                    x: THREE.MathUtils.degToRad(payload.x),
-                                    y: THREE.MathUtils.degToRad(payload.y),
-                                    z: THREE.MathUtils.degToRad(payload.z)
-                                };
+                        case "battery_status":
+                            if (payload?.percentage !== undefined) {
+                                const batteryText = `${payload.percentage.toFixed(0)}%`;
+                                const chargingStatus = payload.isCharging ? " (Charging)" : "";
+                                safeUpdateElement('data-battery', batteryText + chargingStatus);
                             }
-                            if (dataType === "magnetometer_compass") mag = payload;
-                        }
-                        break;
+                            break;
+                            
+                        case "location":
+                            if (payload?.latitude) {
+                                safeUpdateElement('data-location', 
+                                    `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`);
+                            } else {
+                                safeUpdateElement('data-location', payload || 'N/A');
+                            }
+                            break;
+                            
+                        case "current_app":
+                            safeUpdateElement('data-current-app', payload || 'N/A');
+                            break;
+                            
+                        case "proximity":
+                            if (payload?.distance !== undefined) {
+                                safeUpdateElement('data-proximity', `${payload.distance} cm`);
+                            }
+                            break;
+                            
+                        case "installed_apps":
+                            if (isManualTrigger && typeof payload === 'object') {
+                                installedApps = payload;
+                                renderAppList();
+                                showModal('app-list-modal');
+                            }
+                            break;
+                            
+                        case "accelerometer":
+                        case "gyroscope":
+                        case "magnetometer_compass":
+                            if (payload?.x !== undefined) {
+                                // Update individual sensor displays
+                                const prefix = dataType.replace('_compass', '');
+                                safeUpdateElement(`${prefix}-x`, payload.x.toFixed(2));
+                                safeUpdateElement(`${prefix}-y`, payload.y.toFixed(2));
+                                safeUpdateElement(`${prefix}-z`, payload.z.toFixed(2));
+                                
+                                // Enable visualization button
+                                const vizBtn = document.getElementById('visualize-btn');
+                                if (vizBtn) vizBtn.disabled = false;
+                                
+                                // Store sensor data for fusion
+                                if (dataType === "accelerometer") accel = payload;
+                                if (dataType === "gyroscope") {
+                                    gyro = {
+                                        x: THREE.MathUtils.degToRad(payload.x),
+                                        y: THREE.MathUtils.degToRad(payload.y),
+                                        z: THREE.MathUtils.degToRad(payload.z)
+                                    };
+                                }
+                                if (dataType === "magnetometer_compass") mag = payload;
+                            }
+                            break;
+                    }
+                } catch (error) {
+                    console.error(`Error processing ${dataType}:`, error);
                 }
             }
             
@@ -1213,6 +1219,12 @@
             if (animationFrameId && accel.x !== undefined && gyro.x !== undefined && mag.x !== undefined) {
                 updateFusedOrientation(accel, gyro, mag, dt);
             }
+        }
+        
+        // Helper function to safely update DOM elements
+        function safeUpdateElement(id, value) {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
         }
         
         async function sendCommand() {
