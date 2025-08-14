@@ -96,64 +96,51 @@
 
         // --- Sensor Fusion Globals ---
         let fusedQuaternion = new THREE.Quaternion();
-        let lastTimestamp = 0;
-        const GYRO_WEIGHT = 0.98; // Trust the gyroscope 98% of the time for smoothness
+        let isFusionInitialized = false;
+        const GYRO_WEIGHT = 0.98;
 
         function initVisualizer() {
             const visualizerElement = document.getElementById('visualizer');
             if (!visualizerElement) return;
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xddeeff); // Lighter sky blue
+            scene.background = new THREE.Color(0xddeeff);
 
             camera = new THREE.PerspectiveCamera(50, visualizerElement.clientWidth / visualizerElement.clientHeight, 0.1, 1000);
             camera.position.set(0, 3, 6);
-            camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(visualizerElement.clientWidth, visualizerElement.clientHeight);
-            renderer.shadowMap.enabled = true; // Enable shadows
             visualizerElement.innerHTML = '';
             visualizerElement.appendChild(renderer.domElement);
 
-            // **UPGRADE: Better lighting**
             scene.add(new THREE.AmbientLight(0xffffff, 0.4));
             const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
             hemiLight.position.set(0, 20, 0);
             scene.add(hemiLight);
 
-            // **UPGRADE: Interactive Orbit Controls**
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.1;
 
-            // **UPGRADE: Compass Floor**
             const textureLoader = new THREE.TextureLoader();
-            const compassTexture = textureLoader.load('https://i.imgur.com/E5k0y26.png'); // Simple compass texture
+            const compassTexture = textureLoader.load('https://i.imgur.com/E5k0y26.png');
             const floorGeometry = new THREE.CircleGeometry(4, 32);
             const floorMaterial = new THREE.MeshPhongMaterial({ map: compassTexture, transparent: true });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = -Math.PI / 2;
-            floor.receiveShadow = true;
             scene.add(floor);
             
-            // Phone Model
             phoneModel = new THREE.Group();
             const bodyGeometry = new THREE.BoxGeometry(1.5, 3, 0.2);
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x282828, metalness: 0.5, roughness: 0.6 });
             const phoneBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            phoneBody.castShadow = true;
             
             const screenGeometry = new THREE.BoxGeometry(1.35, 2.8, 0.05);
             const screenMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
             const phoneScreen = new THREE.Mesh(screenGeometry, screenMaterial);
             phoneScreen.position.z = 0.11;
 
-            phoneModel.add(phoneBody);
-            phoneModel.add(phoneScreen);
-            
-            // Set initial rotation so that phone's Y is "up"
-            phoneModel.rotation.x = -Math.PI / 2; 
+            phoneModel.add(phoneBody, phoneScreen);
             scene.add(phoneModel);
 
             startAnimationLoop();
@@ -170,63 +157,81 @@
         }
 
         function stopAnimationLoop() {
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
         }
         
-        // **UPGRADE: Fused orientation update logic**
-        function updateOrientation(accel, gyro, mag) {
-            if (!lastTimestamp) {
-                lastTimestamp = Date.now();
-                // Set initial orientation from accel/mag
-                const initialQuaternion = getAccelMagQuaternion(accel, mag);
-                if(initialQuaternion) fusedQuaternion.copy(initialQuaternion);
-                return;
-            }
-
-            const now = Date.now();
-            const dt = (now - lastTimestamp) / 1000.0; // Delta time in seconds
-            lastTimestamp = now;
-            
-            // --- Gyroscope Integration ---
-            const gyroQuat = new THREE.Quaternion();
-            const axis = new THREE.Vector3(gyro.x, gyro.y, gyro.z);
-            const angle = axis.length() * dt;
-            axis.normalize();
-            gyroQuat.setFromAxisAngle(axis, angle);
-            
-            // Apply gyro rotation
-            fusedQuaternion.multiplyQuaternions(fusedQuaternion, gyroQuat);
-
-            // --- Accelerometer/Magnetometer Correction ---
-            const accelMagQuat = getAccelMagQuaternion(accel, mag);
-
-            if (accelMagQuat) {
-                // Apply complementary filter: slerp from gyro to accel/mag
-                fusedQuaternion.slerp(accelMagQuat, 1 - GYRO_WEIGHT);
-            }
-
-            // Update the 3D model
-            if (phoneModel) {
-                 phoneModel.quaternion.copy(fusedQuaternion);
-            }
-        }
-
-        function getAccelMagQuaternion(accel, mag) {
+        function getQuaternionFromAccelMag(accel, mag) {
             const G = new THREE.Vector3(accel.x, accel.y, accel.z).normalize();
             const M = new THREE.Vector3(mag.x, mag.y, mag.z).normalize();
 
-            const E = M.clone().cross(G).normalize(); // East vector
-            const N = G.clone().cross(E).normalize(); // North vector
+            // Check for invalid vectors
+            if (G.length() === 0 || M.length() === 0) return null;
 
-            const orientationMatrix = new THREE.Matrix4().makeBasis(E, G, N);
+            const E = M.clone().cross(G).normalize();
+            if (E.length() === 0) return null; // Vectors are parallel
+
+            const N = G.clone().cross(E).normalize();
+            
+            const orientationMatrix = new THREE.Matrix4();
+            // **FIX:** Use the correct basis order (East, North, Up)
+            orientationMatrix.makeBasis(E, N, G); 
+            
             return new THREE.Quaternion().setFromRotationMatrix(orientationMatrix);
         }
 
-        // --- Standard UI and Fetch Logic ---
+        function updateFusedOrientation(accel, gyro, mag, dt) {
+            const accelMagQuat = getQuaternionFromAccelMag(accel, mag);
+
+            if (!isFusionInitialized && accelMagQuat) {
+                fusedQuaternion.copy(accelMagQuat);
+                isFusionInitialized = true;
+            } else {
+                const gyroQuat = new THREE.Quaternion();
+                const axis = new THREE.Vector3(gyro.x, gyro.y, gyro.z);
+                const angle = axis.length() * dt;
+                axis.normalize();
+                gyroQuat.setFromAxisAngle(axis, angle);
+                
+                fusedQuaternion.multiplyQuaternions(gyroQuat, fusedQuaternion);
+                
+                if (accelMagQuat) {
+                    fusedQuaternion.slerp(accelMagQuat, 1 - GYRO_WEIGHT);
+                }
+            }
+            phoneModel.quaternion.copy(fusedQuaternion);
+        }
+
+        // --- All Original Functions Fully Restored ---
+
         window.onload = () => { if (sessionStorage.getItem('isAuthenticated') === 'true') showAdminPanel(); };
-        function checkUiPassword() { if (document.getElementById('ui-password-input').value === UI_UNLOCK_PASSWORD) { sessionStorage.setItem('isAuthenticated', 'true'); showAdminPanel(); } else { alert('Wrong UI Password!'); } }
-        function showAdminPanel() { document.getElementById('password-view').style.display = 'none'; document.getElementById('admin-panel-view').style.display = 'block'; populateDropdown('device-dropdown', DEVICES_JSON_URL, 'Device'); populateDropdown('action-dropdown', COMMANDS_JSON_URL, 'Command'); }
-        async function populateDropdown(id, url, type) { const d=document.getElementById(id); try { const r=await fetch(url), i=await r.json(); d.innerHTML=''; d.add(new Option(`-- Select a ${type} --`,"")); i.forEach(t=>d.add(new Option(t.name,t.id||t.value,!1,t.disabled)))} catch(e){d.innerHTML=`<option value="">-- Error Loading ${type} --</option>`}}
+
+        function checkUiPassword() {
+            if (document.getElementById('ui-password-input').value === UI_UNLOCK_PASSWORD) {
+                sessionStorage.setItem('isAuthenticated', 'true');
+                showAdminPanel();
+            } else { alert('Wrong UI Password!'); }
+        }
+
+        function showAdminPanel() {
+            document.getElementById('password-view').style.display = 'none';
+            document.getElementById('admin-panel-view').style.display = 'block';
+            populateDropdown('device-dropdown', DEVICES_JSON_URL, 'Device');
+            populateDropdown('action-dropdown', COMMANDS_JSON_URL, 'Command');
+        }
+
+        async function populateDropdown(id, url, type) {
+            const dropdown = document.getElementById(id);
+            try {
+                const res = await fetch(url);
+                const items = await res.json();
+                dropdown.innerHTML = '';
+                dropdown.add(new Option(`-- Select a ${type} --`, ""));
+                items.forEach(item => dropdown.add(new Option(item.name, item.id || item.value, false, item.disabled)));
+            } catch (e) { dropdown.innerHTML = `<option value="">-- Error Loading ${type} --</option>`; }
+        }
 
         function showModal(id) {
             document.getElementById(id).style.display = 'flex';
@@ -244,11 +249,46 @@
             document.getElementById(id).style.display = 'none'; 
         }
         
-        function startPolling() { const d=document.getElementById('device-dropdown').value; if(dataPollInterval)clearInterval(dataPollInterval); if(d){forceRefresh();dataPollInterval=setInterval(fetchLatestData,5000)}}
-        async function forceRefresh() { const r=document.getElementById('refresh-btn');r.disabled=!0;r.textContent='Refreshing...';await fetchLatestData();r.disabled=!1;r.textContent='Refresh Data'}
-        async function fetchLatestData() { const d=document.getElementById('device-dropdown').value;if(!d)return;try{const r=await fetch(`/.netlify/functions/get-status?deviceId=${d}`);if(!r.ok)throw new Error;const a=await r.json();parseAndDisplayData(a,!1)}catch(e){console.error("Fetch error:",e)}}
+        function startPolling() {
+            const deviceId = document.getElementById('device-dropdown').value;
+            if (dataPollInterval) {
+                clearInterval(dataPollInterval);
+                isFusionInitialized = false; // Reset fusion on device change
+            }
+            if (deviceId) {
+                forceRefresh();
+                let lastTimestamp = 0;
+                dataPollInterval = setInterval(async () => {
+                    const now = Date.now();
+                    const dt = lastTimestamp ? (now - lastTimestamp) / 1000.0 : 0.05; // Use 20Hz as default dt
+                    lastTimestamp = now;
+                    await fetchLatestData(dt);
+                }, 5000);
+            }
+        }
+        
+        async function forceRefresh() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = 'Refreshing...';
+            isFusionInitialized = false; // Reset fusion on manual refresh
+            await fetchLatestData(0.05); // Fetch with default delta time
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = 'Refresh Data';
+        }
 
-        function parseAndDisplayData(data, isManualTrigger) {
+        async function fetchLatestData(dt) {
+            const deviceId = document.getElementById('device-dropdown').value;
+            if (!deviceId) return;
+            try {
+                const res = await fetch(`/.netlify/functions/get-status?deviceId=${deviceId}`);
+                if (!res.ok) throw new Error(`Server responded with status: ${res.status}`);
+                const data = await res.json();
+                parseAndDisplayData(data, false, dt);
+            } catch (e) { console.error("Could not fetch data:", e); }
+        }
+
+        function parseAndDisplayData(data, isManualTrigger, dt) {
             let accel = {}, gyro = {}, mag = {};
 
             for (const dataType in data) {
@@ -256,9 +296,26 @@
                 switch(dataType) {
                     case "screen_status": document.getElementById('data-screen').textContent = payload; break;
                     case "battery_status": if (payload?.percentage !== undefined) document.getElementById('data-battery').textContent = `${payload.percentage.toFixed(0)}% (${payload.isCharging ? "Yes" : "No"})`; break;
-                    case "location": if(payload?.latitude) document.getElementById('data-location').textContent = `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`; else document.getElementById('data-location').textContent = payload || 'N/A'; break;
+                    case "location": if (payload?.latitude) document.getElementById('data-location').textContent = `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`; else document.getElementById('data-location').textContent = payload || 'N/A'; break;
                     case "current_app": document.getElementById('data-current-app').textContent = payload || 'N/A'; break;
-                    case "proximity": if(payload?.distance !== undefined) document.getElementById('data-proximity').textContent = `${payload.distance} cm`; break;
+                    case "proximity": if (payload?.distance !== undefined) document.getElementById('data-proximity').textContent = `${payload.distance} cm`; break;
+                    
+                    case "installed_apps":
+                        if (isManualTrigger) {
+                            const appContainer = document.getElementById('app-list-container');
+                            appContainer.innerHTML = '';
+                            if(typeof payload === 'object') {
+                                for (const packageName in payload) {
+                                    const appName = payload[packageName];
+                                    const appDiv = document.createElement('div');
+                                    appDiv.className = 'app-item';
+                                    appDiv.textContent = `${appName} (${packageName})`;
+                                    appContainer.appendChild(appDiv);
+                                }
+                            }
+                            showModal('app-list-modal');
+                        }
+                        break;
                     
                     case "accelerometer": case "gyroscope": case "magnetometer_compass":
                         if (payload?.x !== undefined) {
@@ -267,20 +324,19 @@
                             document.getElementById('visualize-btn').disabled = false;
                             
                             if (dataType === "accelerometer") accel = payload;
-                            if (dataType === "gyroscope") gyro = { x: THREE.MathUtils.degToRad(payload.x), y: THREE.MathUtils.degToRad(payload.y), z: THREE.MathUtils.degToRad(payload.z) }; // Gyro needs radians
+                            if (dataType === "gyroscope") gyro = { x: THREE.MathUtils.degToRad(payload.x), y: THREE.MathUtils.degToRad(payload.y), z: THREE.MathUtils.degToRad(payload.z) };
                             if (dataType === "magnetometer_compass") mag = payload;
                         }
                         break;
                 }
             }
 
-            if (accel.x !== undefined && gyro.x !== undefined && mag.x !== undefined) {
-                updateOrientation(accel, gyro, mag);
+            if (animationFrameId && accel.x !== undefined && gyro.x !== undefined && mag.x !== undefined) {
+                updateFusedOrientation(accel, gyro, mag, dt);
 
-                // Update Heading Info display
                 const euler = new THREE.Euler().setFromQuaternion(fusedQuaternion, 'YXZ');
                 let heading = THREE.MathUtils.radToDeg(euler.y);
-                if (heading < 0) heading += 360; // Normalize to 0-360
+                if (heading < 0) heading += 360;
 
                 const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
                 const dirIndex = Math.round(heading / 45) % 8;
@@ -289,7 +345,52 @@
         }
 
         async function sendCommand() {
-            // This function remains unchanged.
+            const deviceId = document.getElementById('device-dropdown').value;
+            const action = document.getElementById('action-dropdown').value;
+            const password = document.getElementById('backend-password').value;
+            const logDiv = document.getElementById('status-log');
+            const sendButton = document.getElementById('send-button');
+
+            if (!deviceId || !action || !password) {
+                logDiv.className = 'status-log log-error';
+                logDiv.textContent = 'Error: All fields are required.';
+                return;
+            }
+            
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+            logDiv.className = 'status-log log-info';
+            logDiv.textContent = `Sending '${action}' command...`;
+
+            try {
+                const res = await fetch('/.netlify/functions/send-command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceId, action, password })
+                });
+                const result = await res.json();
+                
+                if (res.ok) {
+                    logDiv.className = 'status-log log-success';
+                    logDiv.textContent = `✅ Success: ${result.message}`;
+                    
+                    if (action.startsWith('get_') || action === 'list_apps') {
+                        logDiv.textContent += ' Refreshing data...';
+                        setTimeout(() => {
+                             forceRefresh();
+                        }, 1500);
+                    }
+                } else {
+                    logDiv.className = 'status-log log-error';
+                    logDiv.textContent = `❌ Error: ${result.error || 'Unknown server error'}`;
+                }
+            } catch (error) {
+                logDiv.className = 'status-log log-error';
+                logDiv.textContent = '❌ Network Error: Could not reach the command function.';
+            } finally {
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send Command';
+            }
         }
     </script>
 </body>
