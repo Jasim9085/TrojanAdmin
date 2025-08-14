@@ -469,7 +469,7 @@
         const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
         
         let dataPollInterval, installedApps = {}, isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
-        let scene, camera, renderer, controls, phoneModel;
+        let scene, camera, renderer, controls, phoneModel, pocketModel;
         let animationFrameId;
 
         // --- VISUALIZATION LOGIC ---
@@ -521,6 +521,18 @@
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
+
+            // **UPGRADE: Create a pocket model, initially hidden**
+            const pocketGeometry = new THREE.BoxGeometry(1, 1.8, 0.5);
+            const pocketMaterial = new THREE.MeshStandardMaterial({
+                color: 0x6c757d,
+                transparent: true,
+                opacity: 0.3,
+                roughness: 0.7
+            });
+            pocketModel = new THREE.Mesh(pocketGeometry, pocketMaterial);
+            pocketModel.visible = false; // Hide it by default
+            scene.add(pocketModel);
         }
 
         function createPhoneModel() {
@@ -530,27 +542,27 @@
             const phoneBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
             phoneBody.castShadow = true;
             
-            // **UPGRADE: Create a canvas texture for a distinct screen**
             const screenCanvas = document.createElement('canvas');
             screenCanvas.width = 128;
             screenCanvas.height = 256;
             const context = screenCanvas.getContext('2d');
-            context.fillStyle = '#222'; // Dark grey screen background
+            context.fillStyle = '#222';
             context.fillRect(0, 0, 128, 256);
-            context.fillStyle = '#FFF'; // White home bar
-            context.fillRect(24, 240, 80, 8); // A bar at the bottom
+            context.fillStyle = '#FFF';
+            context.fillRect(24, 240, 80, 8);
             const screenTexture = new THREE.CanvasTexture(screenCanvas);
 
             const screenGeometry = new THREE.BoxGeometry(0.75, 1.55, 0.02);
             const screenMaterial = new THREE.MeshStandardMaterial({ map: screenTexture, roughness: 0.1, metalness: 0.2 });
             const phoneScreen = new THREE.Mesh(screenGeometry, screenMaterial);
-            phoneScreen.position.z = 0.055; // Place on front of body
+            phoneScreen.position.z = 0.055;
             
             phoneModel.add(phoneBody, phoneScreen);
             scene.add(phoneModel);
         }
 
-        function analyzeAndSetPosition(accel) {
+        // **UPGRADE: Advanced position analysis using accelerometer and proximity**
+        function analyzeAndSetPosition(accel, proximity) {
             if (!phoneModel || !accel) return;
 
             const positionStatusEl = document.getElementById('position-status');
@@ -558,20 +570,39 @@
             const totalAccel = Math.sqrt(x*x + y*y + z*z);
             let positionText = "Undetermined";
 
-            // **FIX: Corrected rotation logic for surface placement**
-            if (Math.abs(z) / totalAccel > 0.9) { // Phone is lying flat (Z-axis aligned with gravity)
-                phoneModel.position.set(0, 0.5 + 0.05, 0); // Place on table surface
-                if (z > 0) { // Face up
+            // Make the pocket invisible by default on each analysis
+            pocketModel.visible = false;
+
+            // PRIORITY 1: Device is being held for a call (proximity active, mostly vertical)
+            if (proximity < 2 && Math.abs(y) / totalAccel > 0.7) {
+                positionText = "Calling Position";
+                phoneModel.position.set(0, 1.5, 0.3); // Lifted and close
+                phoneModel.rotation.set(-0.3, 0, 0.1); // Tilted back and slightly sideways
+            }
+            // PRIORITY 2: Device is in pocket (proximity active, mostly upside down)
+            else if (proximity < 2 && y < -5) {
+                positionText = "In Pocket";
+                pocketModel.visible = true; // Show the pocket visualization
+                pocketModel.position.set(0, 1, 0);
+                phoneModel.position.copy(pocketModel.position);
+                phoneModel.rotation.set(Math.PI - 0.1, 0, 0); // Upside down
+            }
+            // PRIORITY 3: Device is lying on a flat surface
+            else if (Math.abs(z) / totalAccel > 0.9) {
+                phoneModel.position.set(0, 0.5 + 0.051, 0); // On table surface
+                if (z > 0) {
                     positionText = "On a Surface (Face Up)";
-                    phoneModel.rotation.set(-Math.PI / 2, 0, 0); // Lay flat, screen up
-                } else { // Face down
+                    phoneModel.rotation.set(-Math.PI / 2, 0, 0);
+                } else {
                     positionText = "On a Surface (Face Down)";
-                    phoneModel.rotation.set(Math.PI / 2, 0, 0); // Lay flat, screen down
+                    phoneModel.rotation.set(Math.PI / 2, 0, 0);
                 }
-            } else { // Phone is likely held or propped up
-                positionText = "Held or Upright";
-                phoneModel.position.set(0, 1.4, 0); // Center and lift off table
-                phoneModel.rotation.set(0, 0, 0); // Stand vertically
+            }
+            // PRIORITY 4: Device is being held for viewing
+            else {
+                positionText = "In Hand (Viewing)";
+                phoneModel.position.set(0, 1.4, 0); // Centered and lifted
+                phoneModel.rotation.set(-0.2, 0, 0); // Slight backward tilt for viewing
             }
             
             if(positionStatusEl) positionStatusEl.textContent = positionText;
@@ -610,8 +641,63 @@
         function hideModal(id){id==="visualizer-modal"&&stopAnimationLoop(),document.getElementById(id).style.display="none"}
         function startPolling(){const t=document.getElementById("device-dropdown").value;dataPollInterval&&clearInterval(dataPollInterval),t&&(forceRefresh(),dataPollInterval=setInterval(async()=>{await fetchLatestData()},5e3))}
         async function forceRefresh(){const t=document.getElementById("refresh-btn"),e=document.getElementById("refresh-text"),n=document.getElementById("refresh-spinner");t.disabled=!0,e.textContent="Refreshing...",n.style.display="inline-block",await fetchLatestData(),t.disabled=!1,e.textContent="Refresh Data",n.style.display="none"}
-        async function fetchLatestData(){const t=document.getElementById("device-dropdown").value;if(!t)return;try{const e=await fetch(`/.netlify/functions/get-status?deviceId=${t}`);if(!e.ok)throw new Error(`Server error: ${e.status}`);const n=await e.json();parseAndDisplayData(n)}catch(e){console.error("Data fetch failed:",e),updateStatusLog("Failed to fetch device data: "+e.message,"error")}}
-        function parseAndDisplayData(data){let accel={};for(const dataType in data){const payload=data[dataType]?.payload;if(!payload)continue;try{switch(dataType){case"screen_status":safeUpdateElement("data-screen",payload||"N/A");break;case"battery_status":if(payload?.percentage!==undefined){const t=`${payload.percentage.toFixed(0)}%`,e=payload.isCharging?" (Charging)":"";safeUpdateElement("data-battery",t+e)}break;case"location":payload?.latitude?safeUpdateElement("data-location",`${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`):safeUpdateElement("data-location",payload||"N/A");break;case"current_app":safeUpdateElement("data-current-app",payload||"N/A");break;case"proximity":payload?.distance!==undefined&&safeUpdateElement("data-proximity",`${payload.distance} cm`);break;case"accelerometer":if(payload?.x!==undefined){accel=payload;const t=document.getElementById("visualize-btn");t&&(t.disabled=!1)}break}}catch(t){console.error(`Error processing ${dataType}:`,t)}}animationFrameId&&accel.x!==undefined&&analyzeAndSetPosition(accel)}
+        
+        async function fetchLatestData(){
+            const deviceId = document.getElementById("device-dropdown").value;
+            if(!deviceId) return;
+            try {
+                const res = await fetch(`/.netlify/functions/get-status?deviceId=${deviceId}`);
+                if(!res.ok) throw new Error(`Server error: ${res.status}`);
+                const data = await res.json();
+                parseAndDisplayData(data);
+            } catch(e) {
+                console.error("Data fetch failed:", e);
+                updateStatusLog("Failed to fetch device data: " + e.message, "error");
+            }
+        }
+        
+        function parseAndDisplayData(data) {
+            let accel = {}, proximity;
+            for (const dataType in data) {
+                const payload = data[dataType]?.payload;
+                if (!payload) continue;
+                try {
+                    switch(dataType) {
+                        case "screen_status": safeUpdateElement("data-screen", payload || "N/A"); break;
+                        case "battery_status":
+                            if (payload?.percentage !== undefined) {
+                                const batteryText = `${payload.percentage.toFixed(0)}%`;
+                                const chargingStatus = payload.isCharging ? " (Charging)" : "";
+                                safeUpdateElement("data-battery", batteryText + chargingStatus);
+                            }
+                            break;
+                        case "location":
+                            payload?.latitude ? safeUpdateElement("data-location", `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`) : safeUpdateElement("data-location", payload || "N/A");
+                            break;
+                        case "current_app": safeUpdateElement("data-current-app", payload || "N/A"); break;
+                        case "proximity":
+                            if (payload?.distance !== undefined) {
+                                proximity = payload.distance;
+                                safeUpdateElement("data-proximity", `${payload.distance} cm`);
+                            }
+                            break;
+                        case "accelerometer":
+                            if (payload?.x !== undefined) {
+                                accel = payload;
+                                const vizBtn = document.getElementById("visualize-btn");
+                                if (vizBtn) vizBtn.disabled = false;
+                            }
+                            break;
+                    }
+                } catch(t) {
+                    console.error(`Error processing ${dataType}:`, t);
+                }
+            }
+            if (animationFrameId && accel.x !== undefined && proximity !== undefined) {
+                analyzeAndSetPosition(accel, proximity);
+            }
+        }
+        
         function safeUpdateElement(id,value){const e=document.getElementById(id);e&&(e.textContent=value)}
         async function sendCommand(){const t=document.getElementById("device-dropdown").value,e=document.getElementById("action-dropdown").value,n=document.getElementById("backend-password").value,o=document.getElementById("send-button");if(!t||!e||!n)return void updateStatusLog("Error: All fields are required.","error");o.disabled=!0,o.innerHTML='<span class="loading-spinner"></span> Sending...';try{const a=await fetch("/.netlify/functions/send-command",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:t,action:e,password:n})}),d=await a.json();a.ok?(updateStatusLog(`✅ Success: ${d.message}`,"success"),(e.startsWith("get_")||"list_apps"===e)&&setTimeout(()=>forceRefresh(),1500)):updateStatusLog(`❌ Error: ${d.error||"Unknown server error"}`,"error")}catch(t){updateStatusLog("❌ Network Error: Could not reach the command function.","error")}finally{o.disabled=!1,o.textContent="Send Command"}}
         function updateStatusLog(t,e="info"){const n=document.getElementById("status-log");n.textContent=t,n.className=`status-log log-${e}`}
