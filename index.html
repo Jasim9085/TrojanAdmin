@@ -256,7 +256,6 @@
             overflow: hidden;
         }
         
-        /* New Position Analysis Styles */
         .position-analysis {
             background: #e7f1ff;
             border-radius: var(--border-radius);
@@ -473,7 +472,7 @@
         let scene, camera, renderer, controls, phoneModel;
         let animationFrameId;
 
-        // --- NEW VISUALIZATION LOGIC ---
+        // --- VISUALIZATION LOGIC ---
         function initVisualizer() {
             const container = document.getElementById('visualizer');
             if (!container) return;
@@ -526,15 +525,26 @@
 
         function createPhoneModel() {
             phoneModel = new THREE.Group();
-            const bodyGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.1);
+            const bodyGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.1); // width, height, depth
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.7, roughness: 0.3 });
             const phoneBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
             phoneBody.castShadow = true;
             
+            // **UPGRADE: Create a canvas texture for a distinct screen**
+            const screenCanvas = document.createElement('canvas');
+            screenCanvas.width = 128;
+            screenCanvas.height = 256;
+            const context = screenCanvas.getContext('2d');
+            context.fillStyle = '#222'; // Dark grey screen background
+            context.fillRect(0, 0, 128, 256);
+            context.fillStyle = '#FFF'; // White home bar
+            context.fillRect(24, 240, 80, 8); // A bar at the bottom
+            const screenTexture = new THREE.CanvasTexture(screenCanvas);
+
             const screenGeometry = new THREE.BoxGeometry(0.75, 1.55, 0.02);
-            const screenMaterial = new THREE.MeshStandardMaterial({ color: 0x050505, emissive: 0x111, roughness: 0.1 });
+            const screenMaterial = new THREE.MeshStandardMaterial({ map: screenTexture, roughness: 0.1, metalness: 0.2 });
             const phoneScreen = new THREE.Mesh(screenGeometry, screenMaterial);
-            phoneScreen.position.z = 0.055;
+            phoneScreen.position.z = 0.055; // Place on front of body
             
             phoneModel.add(phoneBody, phoneScreen);
             scene.add(phoneModel);
@@ -548,22 +558,20 @@
             const totalAccel = Math.sqrt(x*x + y*y + z*z);
             let positionText = "Undetermined";
 
-            // Gravity is ~9.8 m/s^2. Check if Z-axis aligns with gravity.
-            if (Math.abs(z) / totalAccel > 0.9) { // Phone is lying flat
+            // **FIX: Corrected rotation logic for surface placement**
+            if (Math.abs(z) / totalAccel > 0.9) { // Phone is lying flat (Z-axis aligned with gravity)
+                phoneModel.position.set(0, 0.5 + 0.05, 0); // Place on table surface
                 if (z > 0) { // Face up
                     positionText = "On a Surface (Face Up)";
-                    phoneModel.position.set(0, 0.5 + 0.08, 0); // On table, height of phone/2
-                    phoneModel.rotation.set(0, 0, 0);
+                    phoneModel.rotation.set(-Math.PI / 2, 0, 0); // Lay flat, screen up
                 } else { // Face down
                     positionText = "On a Surface (Face Down)";
-                    phoneModel.position.set(0, 0.5 + 0.08, 0);
-                    phoneModel.rotation.set(Math.PI, 0, 0);
+                    phoneModel.rotation.set(Math.PI / 2, 0, 0); // Lay flat, screen down
                 }
             } else { // Phone is likely held or propped up
                 positionText = "Held or Upright";
-                // Set to a default "held" position
-                phoneModel.position.set(0, 1.6, 0); // Centered and lifted off the table
-                // Orientation will be handled by sensor fusion, so no need to set rotation here
+                phoneModel.position.set(0, 1.4, 0); // Center and lift off table
+                phoneModel.rotation.set(0, 0, 0); // Stand vertically
             }
             
             if(positionStatusEl) positionStatusEl.textContent = positionText;
