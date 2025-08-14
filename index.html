@@ -120,18 +120,19 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
 
-            const floorMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.5 });
+            const floorMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.6 });
             const textureLoader = new THREE.TextureLoader();
-            // **FIX: Replaced broken Imgur link with a working one and added an error handler**
+            
+            // **FIX: Replaced with a new, verified, and stable URL for the compass image**
             textureLoader.load(
-                'https://i.imgur.com/zG7A78n.png',
-                function (texture) { // onLoad
+                'https://i.imgur.com/J8Sps6W.png',
+                (texture) => { // onLoad
                     floorMaterial.map = texture;
                     floorMaterial.needsUpdate = true;
                 },
-                undefined, // onProgress - not needed
-                function (err) { // onError
-                    console.error('An error occurred while loading the compass texture.');
+                undefined, // onProgress
+                (err) => { // onError
+                    console.error('Compass texture failed to load.');
                 }
             );
 
@@ -141,14 +142,14 @@
             scene.add(floor);
             
             phoneModel = new THREE.Group();
-            const bodyGeometry = new THREE.BoxGeometry(1.5, 3, 0.2); // X=width, Y=height, Z=depth
+            const bodyGeometry = new THREE.BoxGeometry(1.5, 3, 0.2);
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x282828, metalness: 0.5, roughness: 0.6 });
             const phoneBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
             
             const screenGeometry = new THREE.BoxGeometry(1.35, 2.8, 0.05);
             const screenMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
             const phoneScreen = new THREE.Mesh(screenGeometry, screenMaterial);
-            phoneScreen.position.z = 0.11; // Place screen on front of body
+            phoneScreen.position.z = 0.11;
 
             phoneModel.add(phoneBody, phoneScreen);
             scene.add(phoneModel);
@@ -173,25 +174,20 @@
             }
         }
         
-        // **FIX: Corrected the mathematical logic for calculating the orientation quaternion**
         function getQuaternionFromAccelMag(accel, mag) {
             const G = new THREE.Vector3(accel.x, accel.y, accel.z).normalize();
             const M = new THREE.Vector3(mag.x, mag.y, mag.z).normalize();
             
-            const E = M.clone().cross(G).normalize(); // East vector
-            if(E.lengthSq() < 0.1) return null; // Prevent issues if vectors are parallel
+            const E = M.clone().cross(G).normalize();
+            if(E.lengthSq() < 0.1) return null;
 
-            const N = G.clone().cross(E).normalize(); // North vector
+            const N = G.clone().cross(E).normalize();
             
-            const orientationMatrix = new THREE.Matrix4();
-            // Map model axes (X,Y,Z) to world vectors (East, Up, South)
-            // Phone's Y is its "height" -> should align with world "Up" (-G)
-            // Phone's X is its "width" -> should align with world "East" (E)
-            // Phone's Z is "out of screen" -> should align with world "South" (-N)
-            orientationMatrix.makeBasis(E, N, G);
-            
+            const orientationMatrix = new THREE.Matrix4().makeBasis(E, N, G);
             const quat = new THREE.Quaternion().setFromRotationMatrix(orientationMatrix);
-            // We need to rotate the result to align our geometry (Y-up box) with the calculated axes
+            
+            // Apply a static correction to align the phone model (which is a Y-up box in its local space)
+            // with the calculated orientation matrix.
             const correction = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), -Math.PI / 2);
             quat.multiplyQuaternions(correction, quat);
 
@@ -206,15 +202,12 @@
                 isFusionInitialized = true;
             } else if (isFusionInitialized) {
                 const gyroQuat = new THREE.Quaternion();
-                // Gyro data is angular velocity, needs to be integrated over time
                 const axis = new THREE.Vector3(gyro.x, gyro.y, gyro.z);
                 const angle = axis.length() * dt;
                 gyroQuat.setFromAxisAngle(axis.normalize(), angle);
                 
-                // Apply gyro rotation to the previous orientation
                 fusedQuaternion.multiplyQuaternions(gyroQuat, fusedQuaternion);
                 
-                // Correct for drift using accelerometer/magnetometer
                 if (accelMagQuat) {
                     fusedQuaternion.slerp(accelMagQuat, 1 - GYRO_WEIGHT);
                 }
