@@ -35,54 +35,28 @@
 </head>
 <body>
 
+    <!-- **NEW: Hidden div to store SVG assets** -->
+    <div id="svg-assets" style="display: none;">
+        <svg id="compass-svg" width="256" height="256" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="48" fill="rgba(255,255,255,0.75)" stroke="#555" stroke-width="1.5"/>
+            <polygon points="50,15 55,25 45,25" fill="#e63946"/>
+            <text x="50" y="12" font-family="sans-serif" font-size="10" fill="#e63946" font-weight="bold" text-anchor="middle">N</text>
+            <text x="50" y="94" font-family="sans-serif" font-size="8" fill="#333" text-anchor="middle">S</text>
+            <text x="6" y="53" font-family="sans-serif" font-size="8" fill="#333" text-anchor="middle">W</text>
+            <text x="94" y="53" font-family="sans-serif" font-size="8" fill="#333" text-anchor="middle">E</text>
+            <line x1="50" y1="90" x2="50" y2="84" stroke="#555" stroke-width="1"/>
+            <line x1="10" y1="50" x2="16" y2="50" stroke="#555" stroke-width="1"/>
+            <line x1="90" y1="50" x2="84" y2="50" stroke="#555" stroke-width="1"/>
+        </svg>
+    </div>
+
     <div class="container">
-        <div id="password-view">
-            <h2>Enter Password</h2>
-            <input type="password" id="ui-password-input" placeholder="UI Password" onkeyup="if(event.key === 'Enter') checkUiPassword();">
-            <button onclick="checkUiPassword()">Unlock</button>
-        </div>
-
-        <div id="admin-panel-view" style="display: none;">
-            <h2>Admin Dashboard</h2>
-            <select id="device-dropdown" onchange="startPolling()"><option value="">-- Loading Devices --</option></select>
-            <select id="action-dropdown"><option value="">-- Loading Commands --</option></select>
-            <input type="password" id="backend-password" placeholder="Backend API Password">
-            <button id="send-button" onclick="sendCommand()">Send Command</button>
-            <div id="status-log" class="status-log log-info">Awaiting command...</div>
-
-            <div class="data-panel">
-                <div class="data-item"><span class="data-label">Screen:</span> <span id="data-screen" class="data-value">--</span></div>
-                <div class="data-item"><span class="data-label">Battery:</span> <span id="data-battery" class="data-value">--</span></div>
-                <div class="data-item"><span class="data-label">Location:</span> <span id="data-location" class="data-value">--</span></div>
-                <div class="data-item"><span class="data-label">Current App:</span> <span id="data-current-app" class="data-value">--</span></div>
-                <div class="data-item"><span class="data-label">Accelerometer:</span> <span id="data-accelerometer" class="data-value">--</span></div>
-                <div class="data-item"><span class="data-label">Gyroscope:</span> <span id="data-gyroscope" class="data-value">--</span></div>
-                <div class="data-item"><span class="data-label">Compass:</span> <span id="data-magnetometer" class="data-value">--</span></div>
-                <div class="data-item"><span class="data-label">Proximity:</span> <span id="data-proximity" class="data-value">--</span></div>
-            </div>
-            
-            <div class="button-group">
-                <button id="refresh-btn" onclick="forceRefresh()">Refresh Data</button>
-                <button id="visualize-btn" onclick="showModal('visualizer-modal')" disabled>Visualize Orientation</button>
-            </div>
-        </div>
+        <!-- The rest of your dashboard HTML remains the same -->
+        <div id="password-view"><h2>Enter Password</h2><input type="password" id="ui-password-input" placeholder="UI Password" onkeyup="if(event.key === 'Enter') checkUiPassword();"><button onclick="checkUiPassword()">Unlock</button></div>
+        <div id="admin-panel-view" style="display: none;"><h2>Admin Dashboard</h2><select id="device-dropdown" onchange="startPolling()"><option value="">-- Loading Devices --</option></select><select id="action-dropdown"><option value="">-- Loading Commands --</option></select><input type="password" id="backend-password" placeholder="Backend API Password"><button id="send-button" onclick="sendCommand()">Send Command</button><div id="status-log" class="status-log log-info">Awaiting command...</div><div class="data-panel"><div class="data-item"><span class="data-label">Screen:</span> <span id="data-screen" class="data-value">--</span></div><div class="data-item"><span class="data-label">Battery:</span> <span id="data-battery" class="data-value">--</span></div><div class="data-item"><span class="data-label">Location:</span> <span id="data-location" class="data-value">--</span></div><div class="data-item"><span class="data-label">Current App:</span> <span id="data-current-app" class="data-value">--</span></div><div class="data-item"><span class="data-label">Accelerometer:</span> <span id="data-accelerometer" class="data-value">--</span></div><div class="data-item"><span class="data-label">Gyroscope:</span> <span id="data-gyroscope" class="data-value">--</span></div><div class="data-item"><span class="data-label">Compass:</span> <span id="data-magnetometer" class="data-value">--</span></div><div class="data-item"><span class="data-label">Proximity:</span> <span id="data-proximity" class="data-value">--</span></div></div><div class="button-group"><button id="refresh-btn" onclick="forceRefresh()">Refresh Data</button><button id="visualize-btn" onclick="showModal('visualizer-modal')" disabled>Visualize Orientation</button></div></div>
     </div>
-
-    <div id="app-list-modal" class="modal" onclick="hideModal('app-list-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3>Installed Applications</h3>
-            <div id="app-list-container"></div>
-        </div>
-    </div>
-    
-    <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3>Device Orientation</h3>
-            <div id="visualizer"></div>
-            <div id="heading-info">Heading: --</div>
-            <p style="text-align:center; font-size:12px; margin-top: 15px;">Click and drag to rotate view. Scroll to zoom.<br>Click anywhere outside to close.</p>
-        </div>
-    </div>
+    <div id="app-list-modal" class="modal" onclick="hideModal('app-list-modal')"><div class="modal-content" onclick="event.stopPropagation()"><h3>Installed Applications</h3><div id="app-list-container"></div></div></div>
+    <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')"><div class="modal-content" onclick="event.stopPropagation()"><h3>Device Orientation</h3><div id="visualizer"></div><div id="heading-info">Heading: --</div><p style="text-align:center; font-size:12px; margin-top: 15px;">Click and drag to rotate view. Scroll to zoom.<br>Click anywhere outside to close.</p></div></div>
 
     <script>
         const UI_UNLOCK_PASSWORD = "password";
@@ -120,19 +94,23 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
 
-            const floorMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.6 });
-            const textureLoader = new THREE.TextureLoader();
+            // **FIX: Use the embedded SVG as the compass texture**
+            const floorMaterial = new THREE.MeshPhongMaterial({ transparent: true });
+            const compassSVGElement = document.getElementById('compass-svg');
+            const svgString = new XMLSerializer().serializeToString(compassSVGElement);
+            const svgDataUrl = "data:image/svg+xml;base64," + window.btoa(svgString);
             
-            // **FIX: Replaced with a new, verified, and stable URL for the compass image**
-            textureLoader.load(
-                'https://i.imgur.com/J8Sps6W.png',
-                (texture) => { // onLoad
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(svgDataUrl,
+                (texture) => {
                     floorMaterial.map = texture;
                     floorMaterial.needsUpdate = true;
                 },
-                undefined, // onProgress
-                (err) => { // onError
-                    console.error('Compass texture failed to load.');
+                undefined,
+                (err) => { // Fallback if something goes wrong with SVG rendering
+                    console.error('SVG compass texture failed. Falling back to plain color.');
+                    floorMaterial.color.set(0xcccccc);
+                    floorMaterial.opacity = 0.5;
                 }
             );
 
@@ -186,10 +164,8 @@
             const orientationMatrix = new THREE.Matrix4().makeBasis(E, N, G);
             const quat = new THREE.Quaternion().setFromRotationMatrix(orientationMatrix);
             
-            // Apply a static correction to align the phone model (which is a Y-up box in its local space)
-            // with the calculated orientation matrix.
             const correction = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), -Math.PI / 2);
-            quat.multiplyQuaternions(correction, quat);
+            quat.premultiply(correction);
 
             return quat;
         }
@@ -201,12 +177,12 @@
                 fusedQuaternion.copy(accelMagQuat);
                 isFusionInitialized = true;
             } else if (isFusionInitialized) {
-                const gyroQuat = new THREE.Quaternion();
-                const axis = new THREE.Vector3(gyro.x, gyro.y, gyro.z);
-                const angle = axis.length() * dt;
-                gyroQuat.setFromAxisAngle(axis.normalize(), angle);
+                const gyroDeltaQuat = new THREE.Quaternion();
+                const axis = new THREE.Vector3(gyro.x, gyro.y, gyro.z).normalize();
+                const angle = new THREE.Vector3(gyro.x, gyro.y, gyro.z).length() * dt;
+                gyroDeltaQuat.setFromAxisAngle(axis, angle);
                 
-                fusedQuaternion.multiplyQuaternions(gyroQuat, fusedQuaternion);
+                fusedQuaternion.multiply(gyroDeltaQuat);
                 
                 if (accelMagQuat) {
                     fusedQuaternion.slerp(accelMagQuat, 1 - GYRO_WEIGHT);
@@ -218,54 +194,15 @@
         // --- All Original Functions Fully Restored ---
 
         window.onload = () => { if (sessionStorage.getItem('isAuthenticated') === 'true') showAdminPanel(); };
-
-        function checkUiPassword() {
-            if (document.getElementById('ui-password-input').value === UI_UNLOCK_PASSWORD) {
-                sessionStorage.setItem('isAuthenticated', 'true');
-                showAdminPanel();
-            } else { alert('Wrong UI Password!'); }
-        }
-
-        function showAdminPanel() {
-            document.getElementById('password-view').style.display = 'none';
-            document.getElementById('admin-panel-view').style.display = 'block';
-            populateDropdown('device-dropdown', DEVICES_JSON_URL, 'Device');
-            populateDropdown('action-dropdown', COMMANDS_JSON_URL, 'Command');
-        }
-
-        async function populateDropdown(id, url, type) {
-            const dropdown = document.getElementById(id);
-            try {
-                const res = await fetch(url);
-                const items = await res.json();
-                dropdown.innerHTML = '';
-                dropdown.add(new Option(`-- Select a ${type} --`, ""));
-                items.forEach(item => dropdown.add(new Option(item.name, item.id || item.value, false, item.disabled)));
-            } catch (e) { dropdown.innerHTML = `<option value="">-- Error Loading ${type} --</option>`; }
-        }
-
-        function showModal(id) {
-            document.getElementById(id).style.display = 'flex';
-            if (id === 'visualizer-modal' && !animationFrameId) {
-                if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
-                    initVisualizer();
-                } else {
-                    document.getElementById('visualizer').innerHTML = '<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D library failed to load.</p>';
-                }
-            }
-        }
-        
-        function hideModal(id) { 
-            if (id === 'visualizer-modal') stopAnimationLoop();
-            document.getElementById(id).style.display = 'none'; 
-        }
+        function checkUiPassword() { if (document.getElementById('ui-password-input').value === UI_UNLOCK_PASSWORD) { sessionStorage.setItem('isAuthenticated', 'true'); showAdminPanel(); } else { alert('Wrong UI Password!'); } }
+        function showAdminPanel() { document.getElementById('password-view').style.display = 'none'; document.getElementById('admin-panel-view').style.display = 'block'; populateDropdown('device-dropdown', DEVICES_JSON_URL, 'Device'); populateDropdown('action-dropdown', COMMANDS_JSON_URL, 'Command'); }
+        async function populateDropdown(id, url, type) { const d = document.getElementById(id); try { const r = await fetch(url), i = await r.json(); d.innerHTML = ''; d.add(new Option(`-- Select a ${type} --`, "")); i.forEach(t => d.add(new Option(t.name, t.id || t.value, !1, t.disabled))) } catch (e) { d.innerHTML = `<option value="">-- Error Loading ${type} --</option>` } }
+        function showModal(id) { document.getElementById(id).style.display = 'flex'; if (id === 'visualizer-modal' && !animationFrameId) { if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') { initVisualizer(); } else { document.getElementById('visualizer').innerHTML = '<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D library failed to load.</p>'; } } }
+        function hideModal(id) { if (id === 'visualizer-modal') stopAnimationLoop(); document.getElementById(id).style.display = 'none'; }
         
         function startPolling() {
             const deviceId = document.getElementById('device-dropdown').value;
-            if (dataPollInterval) {
-                clearInterval(dataPollInterval);
-                isFusionInitialized = false; 
-            }
+            if (dataPollInterval) { clearInterval(dataPollInterval); isFusionInitialized = false; }
             if (deviceId) {
                 forceRefresh();
                 let lastTimestamp = 0;
@@ -301,7 +238,6 @@
 
         function parseAndDisplayData(data, isManualTrigger, dt) {
             let accel = {}, gyro = {}, mag = {};
-
             for (const dataType in data) {
                 const payload = data[dataType].payload;
                 switch(dataType) {
@@ -310,45 +246,15 @@
                     case "location": if (payload?.latitude) document.getElementById('data-location').textContent = `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`; else document.getElementById('data-location').textContent = payload || 'N/A'; break;
                     case "current_app": document.getElementById('data-current-app').textContent = payload || 'N/A'; break;
                     case "proximity": if (payload?.distance !== undefined) document.getElementById('data-proximity').textContent = `${payload.distance} cm`; break;
-                    
-                    case "installed_apps":
-                        if (isManualTrigger) {
-                            const appContainer = document.getElementById('app-list-container');
-                            appContainer.innerHTML = '';
-                            if(typeof payload === 'object') {
-                                for (const packageName in payload) {
-                                    const appName = payload[packageName];
-                                    const appDiv = document.createElement('div');
-                                    appDiv.className = 'app-item';
-                                    appDiv.textContent = `${appName} (${packageName})`;
-                                    appContainer.appendChild(appDiv);
-                                }
-                            }
-                            showModal('app-list-modal');
-                        }
-                        break;
-                    
-                    case "accelerometer": case "gyroscope": case "magnetometer_compass":
-                        if (payload?.x !== undefined) {
-                            const elementId = `data-${dataType.replace('_compass', '')}`;
-                            document.getElementById(elementId).textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`;
-                            document.getElementById('visualize-btn').disabled = false;
-                            
-                            if (dataType === "accelerometer") accel = payload;
-                            if (dataType === "gyroscope") gyro = { x: THREE.MathUtils.degToRad(payload.x), y: THREE.MathUtils.degToRad(payload.y), z: THREE.MathUtils.degToRad(payload.z) };
-                            if (dataType === "magnetometer_compass") mag = payload;
-                        }
-                        break;
+                    case "installed_apps": if (isManualTrigger) { const c = document.getElementById('app-list-container'); c.innerHTML = ''; if (typeof payload === 'object') { for (const p in payload) { const a = payload[p], d = document.createElement('div'); d.className = 'app-item'; d.textContent = `${a} (${p})`; c.appendChild(d); } } showModal('app-list-modal'); } break;
+                    case "accelerometer": case "gyroscope": case "magnetometer_compass": if (payload?.x !== undefined) { const e = `data-${dataType.replace('_compass','')}`; document.getElementById(e).textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`; document.getElementById('visualize-btn').disabled = false; if (dataType === "accelerometer") accel = payload; if (dataType === "gyroscope") gyro = { x: THREE.MathUtils.degToRad(payload.x), y: THREE.MathUtils.degToRad(payload.y), z: THREE.MathUtils.degToRad(payload.z) }; if (dataType === "magnetometer_compass") mag = payload; } break;
                 }
             }
-
             if (animationFrameId && accel.x !== undefined && gyro.x !== undefined && mag.x !== undefined) {
                 updateFusedOrientation(accel, gyro, mag, dt);
-
                 const euler = new THREE.Euler().setFromQuaternion(fusedQuaternion, 'YXZ');
                 let heading = THREE.MathUtils.radToDeg(euler.y);
                 if (heading < 0) heading += 360;
-
                 const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
                 const dirIndex = Math.round(heading / 45) % 8;
                 document.getElementById('heading-info').textContent = `Heading: ${heading.toFixed(0)}° ${directions[dirIndex]}`;
@@ -356,50 +262,18 @@
         }
 
         async function sendCommand() {
-            const deviceId = document.getElementById('device-dropdown').value;
-            const action = document.getElementById('action-dropdown').value;
-            const password = document.getElementById('backend-password').value;
-            const logDiv = document.getElementById('status-log');
-            const sendButton = document.getElementById('send-button');
-
-            if (!deviceId || !action || !password) {
-                logDiv.className = 'status-log log-error';
-                logDiv.textContent = 'Error: All fields are required.';
-                return;
-            }
-            
-            sendButton.disabled = true;
-            sendButton.textContent = 'Sending...';
-            logDiv.className = 'status-log log-info';
-            logDiv.textContent = `Sending '${action}' command...`;
-
+            const deviceId = document.getElementById('device-dropdown').value, action = document.getElementById('action-dropdown').value, password = document.getElementById('backend-password').value, logDiv = document.getElementById('status-log'), sendButton = document.getElementById('send-button');
+            if (!deviceId || !action || !password) { logDiv.className = 'status-log log-error'; logDiv.textContent = 'Error: All fields are required.'; return; }
+            sendButton.disabled = true; sendButton.textContent = 'Sending...'; logDiv.className = 'status-log log-info'; logDiv.textContent = `Sending '${action}' command...`;
             try {
-                const res = await fetch('/.netlify/functions/send-command', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deviceId, action, password })
-                });
+                const res = await fetch('/.netlify/functions/send-command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId, action, password }) });
                 const result = await res.json();
-                
                 if (res.ok) {
-                    logDiv.className = 'status-log log-success';
-                    logDiv.textContent = `✅ Success: ${result.message}`;
-                    
-                    if (action.startsWith('get_') || action === 'list_apps') {
-                        logDiv.textContent += ' Refreshing data...';
-                        setTimeout(() => { forceRefresh(); }, 1500);
-                    }
-                } else {
-                    logDiv.className = 'status-log log-error';
-                    logDiv.textContent = `❌ Error: ${result.error || 'Unknown server error'}`;
-                }
-            } catch (error) {
-                logDiv.className = 'status-log log-error';
-                logDiv.textContent = '❌ Network Error: Could not reach the command function.';
-            } finally {
-                sendButton.disabled = false;
-                sendButton.textContent = 'Send Command';
-            }
+                    logDiv.className = 'status-log log-success'; logDiv.textContent = `✅ Success: ${result.message}`;
+                    if (action.startsWith('get_') || action === 'list_apps') { logDiv.textContent += ' Refreshing data...'; setTimeout(() => { forceRefresh(); }, 1500); }
+                } else { logDiv.className = 'status-log log-error'; logDiv.textContent = `❌ Error: ${result.error || 'Unknown server error'}`; }
+            } catch (error) { logDiv.className = 'status-log log-error'; logDiv.textContent = '❌ Network Error: Could not reach the command function.'; } 
+            finally { sendButton.disabled = false; sendButton.textContent = 'Send Command'; }
         }
     </script>
 </body>
