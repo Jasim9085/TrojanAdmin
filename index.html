@@ -195,7 +195,7 @@
                             <div class="data-item"><div class="data-label">Current App</div><div class="data-value" id="data-current-app">--</div></div>
                             <div class="data-item"><div class="data-label">Proximity</div><div class="data-value" id="data-proximity">--</div></div>
                             <div class="data-item"><div class="data-label">Light Level</div><div class="data-value" id="data-light">--</div></div>
-                            <div class="data-item"><div class="data-label">Last Recording</div><div class="data-value" id="data-recording">--</div></div>
+                            <div class="data-item"><div class="data-label">Last Recording</div><div class="data-value" id="data-recording">--</div><div id="data-recording-player"></div></div>
                         </div>
                     </div>
                     <div class="button-group">
@@ -381,15 +381,19 @@
                              document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
                              showModal('image-modal');
                              break;
-                        case "last_recording_url":
+                        case "last_recording":
+                             const playerContainer = document.getElementById('data-recording-player');
+                             const recordingValue = document.getElementById('data-recording');
+                             playerContainer.innerHTML = ''; // Clear any old player
+
                              if (payload) {
-                                  const link = document.createElement('a');
-                                  link.href = payload; // The URL from Firebase
-                                  link.textContent = "Click to Listen/Download";
-                                  link.target = "_blank"; // Open in a new tab
-                                  const container = document.getElementById('data-recording');
-                                  container.innerHTML = ''; // Clear previous content
-                                  container.appendChild(link);
+                                 const audio = document.createElement('audio');
+                                 audio.controls = true;
+                                 audio.src = `data:audio/mp3;base64,${payload}`;
+                                 playerContainer.appendChild(audio);
+                                 recordingValue.textContent = "New recording received.";
+                             } else {
+                                 recordingValue.textContent = "--";
                              }
                              break;
                         default: if (["rotation_vector", "gravity", "magnetometer"].includes(key)) hasSensorData = true; break;
