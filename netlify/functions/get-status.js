@@ -36,7 +36,8 @@ const ALL_DATA_TYPES = [
 
     // --- NEW: Media Payloads ---
     "screenshot",
-    "picture"
+    "picture",
+    "last_recording_url"
 ];
 
 exports.handler = async function(event) {
