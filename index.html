@@ -430,7 +430,7 @@
                             <div class="data-item"><div class="data-label">Location</div><div class="data-value" id="data-location">--</div></div>
                             <div class="data-item"><div class="data-label">Current App</div><div class="data-value" id="data-current-app">--</div></div>
                             <div class="data-item"><div class="data-label">Proximity</div><div class="data-value" id="data-proximity">--</div></div>
-                            <div class="data-item"><div class="data-label">Compass</div><div class="data-value" id="data-magnetometer">--</div></div>
+                            <div class="data-item"><div class="data-label">Light Level</div><div class="data-value" id="data-light">--</div></div>
                         </div>
                     </div>
 
@@ -483,7 +483,7 @@
             scene.background = new THREE.Color(0xe9ecef);
             
             camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
-            camera.position.set(0, 3, 7);
+            camera.position.set(0, 1.6, 6);
             
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
@@ -499,7 +499,7 @@
             
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.target.set(0, 0.5, 0);
+            controls.target.set(0, 1.2, 0);
 
             createEnvironment();
             createPhoneModel();
@@ -509,10 +509,10 @@
         }
 
         function createEnvironment() {
-            const tableGeometry = new THREE.BoxGeometry(4, 0.15, 2.5);
+            const tableGeometry = new THREE.BoxGeometry(5, 0.15, 3);
             const tableMaterial = new THREE.MeshStandardMaterial({ color: 0xadb5bd });
             const table = new THREE.Mesh(tableGeometry, tableMaterial);
-            table.position.y = 0.5;
+            table.position.y = 0;
             table.receiveShadow = true;
             scene.add(table);
             
@@ -520,6 +520,7 @@
             const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.8 });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -0.075;
             floor.receiveShadow = true;
             scene.add(floor);
 
@@ -561,83 +562,78 @@
             scene.add(phoneModel);
         }
         
-        // **UPGRADE: Advanced contextual analysis with more states and compass direction**
-        function analyzeAndSetPosition(accel, proximity, mag) {
-            if (!phoneModel || !accel || !mag) return;
+        // **UPGRADE: Tiered Fallback System for Visualization**
+        function analyzeAndSetPosition(data) {
+            if (!phoneModel) return;
 
-            const positionStatusEl = document.getElementById('position-status');
-            const { x, y, z } = accel;
-            const totalAccel = Math.sqrt(x*x + y*y + z*z);
+            // --- Tiered Orientation Logic ---
+            let orientationQuat = new THREE.Quaternion();
+            let hasGoodOrientation = false;
+
+            // TIER 1: Use the highest-fidelity rotation vector available
+            const rotVec = data.rotation_vector || data.game_rotation_vector || data.geomagnetic_rotation_vector;
+            if (rotVec && rotVec.w !== undefined) {
+                orientationQuat.set(rotVec.x, rotVec.y, rotVec.z, rotVec.w);
+                hasGoodOrientation = true;
+            }
+            // TIER 3: Fallback to manual fusion if no rotation vectors
+            else if (data.gravity && data.magnetometer) {
+                const G = new THREE.Vector3(data.gravity.x, data.gravity.y, data.gravity.z).normalize();
+                const M = new THREE.Vector3(data.magnetometer.x, data.magnetometer.y, data.magnetometer.z).normalize();
+                const E = M.clone().cross(G).normalize();
+                const N = G.clone().cross(E).normalize();
+                const orientationMatrix = new THREE.Matrix4().makeBasis(E, N, G);
+                orientationQuat.setFromRotationMatrix(orientationMatrix);
+                hasGoodOrientation = true;
+            }
+
+            if (hasGoodOrientation) {
+                // The phone model's "up" is its local Y axis. We apply a correction
+                // to align this with the standard Android/iOS coordinate system.
+                const correction = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+                orientationQuat.multiplyQuaternions(correction, orientationQuat);
+                phoneModel.quaternion.slerp(orientationQuat, 0.5); // Slerp for smooth updates
+            }
+
+            // --- Tiered Context Logic ---
             let positionText = "Undetermined";
-
             pocketModel.visible = false;
 
-            // Normalize vectors for accurate angle calculations
-            const G = new THREE.Vector3(x, y, z).normalize();
-            const M = new THREE.Vector3(mag.x, mag.y, mag.z).normalize();
-            
-            let isLandscape = Math.abs(G.x) > Math.abs(G.y);
-
-            // PRIORITY 1: Calling (Proximity active, portrait-like)
-            if (proximity < 2 && !isLandscape) {
-                positionText = "Calling Position";
-                phoneModel.position.set(0, 1.5, 0.3);
-                phoneModel.rotation.set(-0.3, 0, 0.1);
-            }
-            // PRIORITY 2: In Pocket (Proximity active, upside-down)
-            else if (proximity < 2 && G.y < -0.6) {
+            // TIER 1: Use high-level composite sensors if available
+            if (data.context_events?.pocket_mode) {
                 positionText = "In Pocket";
                 pocketModel.visible = true;
-                pocketModel.position.set(0, 1, 0);
+                pocketModel.position.set(0, 1.2, 0);
                 phoneModel.position.copy(pocketModel.position);
-                phoneModel.rotation.set(Math.PI - 0.1, 0, 0);
+            } else if (data.context_events?.face_up_down !== undefined) {
+                positionText = data.context_events.face_up_down === 0 ? "On Surface (Face Up)" : "On Surface (Face Down)";
+                phoneModel.position.set(0, 0.075 + 0.05, 0); // On table
             }
-            // PRIORITY 3: Lying down viewing (Portrait, but sideways gravity)
-            else if (!isLandscape && Math.abs(G.x) > 0.8) {
-                positionText = "Lying Down (Portrait Viewing)";
-                phoneModel.position.set(0, 1.4, 0);
-                phoneModel.rotation.set(0, 0, G.x > 0 ? Math.PI / 2 : -Math.PI / 2);
+            // TIER 2: Fallback to Proximity + Light sensor analysis
+            else if (data.proximity?.distance < 2 && data.light?.lux < 10) {
+                 positionText = "In Pocket / Bag";
+                 pocketModel.visible = true;
+                 pocketModel.position.set(0, 1.2, 0);
+                 phoneModel.position.copy(pocketModel.position);
+            } else if (data.proximity?.distance < 2) {
+                positionText = "Calling Position";
+                phoneModel.position.set(0, 1.3, 0);
             }
-            // PRIORITY 4: On a flat surface
-            else if (Math.abs(G.z) > 0.9) {
-                phoneModel.position.set(0, 0.5 + 0.051, 0);
-                if (isLandscape) {
-                    positionText = "On a Surface (Landscape)";
-                    phoneModel.rotation.set(-Math.PI / 2, 0, G.x > 0 ? Math.PI / 2 : -Math.PI / 2);
+             // TIER 3: Fallback to basic accelerometer analysis (if no context sensors)
+            else if (data.gravity) {
+                const G = data.gravity;
+                if (Math.abs(G.z) > 9.0) { // Lying flat on a surface
+                    positionText = "On a Surface";
+                    phoneModel.position.set(0, 0.075 + 0.05, 0);
                 } else {
-                    positionText = G.z > 0 ? "On a Surface (Face Up)" : "On a Surface (Face Down)";
-                    phoneModel.rotation.set(G.z > 0 ? -Math.PI / 2 : Math.PI / 2, 0, 0);
+                    positionText = "In Hand";
+                    phoneModel.position.set(0, 1.3, 0);
                 }
+            } else {
+                phoneModel.position.set(0, 1.3, 0);
             }
-            // PRIORITY 5: Hand-held landscape (for movies, etc.)
-            else if (isLandscape) {
-                positionText = "In Hand (Landscape Viewing)";
-                phoneModel.position.set(0, 1.4, 0);
-                phoneModel.rotation.set(-0.2, 0, G.x > 0 ? Math.PI / 2 : -Math.PI / 2);
-            }
-            // PRIORITY 6: Default portrait hand-held
-            else {
-                positionText = "In Hand (Portrait Viewing)";
-                phoneModel.position.set(0, 1.4, 0);
-                phoneModel.rotation.set(-0.2, 0, 0);
-            }
-
-            // **UPGRADE: Add Compass Direction to the text**
-            const E = M.clone().cross(G).normalize();
-            const N = G.clone().cross(E).normalize();
-            const orientationMatrix = new THREE.Matrix4().makeBasis(E, N, G);
-            const worldQuaternion = new THREE.Quaternion().setFromRotationMatrix(orientationMatrix);
-
-            const forwardVector = new THREE.Vector3(0, 1, 0); // Vector pointing out of the phone's back
-            forwardVector.applyQuaternion(worldQuaternion);
-
-            // We want the direction the SCREEN is facing, which is the opposite of the back
-            const screenVector = forwardVector.negate();
-            const angle = Math.atan2(screenVector.x, screenVector.z) * (180 / Math.PI);
-            const directions = ["North", "North-East", "East", "South-East", "South", "South-West", "West", "North-West"];
-            const direction = directions[Math.round((angle < 0 ? angle + 360 : angle) / 45) % 8];
             
-            if(positionStatusEl) positionStatusEl.textContent = `${positionText} - Screen Facing ${direction}`;
+            document.getElementById('position-status').textContent = positionText;
         }
 
         function startAnimationLoop() {
@@ -688,13 +684,15 @@
             }
         }
         
-        function parseAndDisplayData(data) {
-            let accel, proximity, mag;
-            for (const dataType in data) {
-                const payload = data[dataType]?.payload;
+        function parseAndDisplayData(allData) {
+            let hasSensorData = false;
+            for (const key in allData) {
+                const payload = allData[key]?.payload;
                 if (!payload) continue;
+                hasSensorData = true;
+
                 try {
-                    switch(dataType) {
+                    switch(key) {
                         case "screen_status": safeUpdateElement("data-screen", payload || "N/A"); break;
                         case "battery_status":
                             if (payload?.percentage !== undefined) safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%${payload.isCharging ? " (Charging)" : ""}`);
@@ -704,32 +702,24 @@
                             break;
                         case "current_app": safeUpdateElement("data-current-app", payload || "N/A"); break;
                         case "proximity":
-                            if (payload?.distance !== undefined) {
-                                proximity = payload.distance;
-                                safeUpdateElement("data-proximity", `${payload.distance} cm`);
-                            }
+                            if (payload?.distance !== undefined) safeUpdateElement("data-proximity", `${payload.distance} cm`);
                             break;
-                        case "accelerometer":
-                            if (payload?.x !== undefined) accel = payload;
-                            break;
-                        case "magnetometer_compass":
-                            if(payload?.x !== undefined){
-                                mag = payload;
-                                safeUpdateElement("data-magnetometer", `X:${payload.x.toFixed(1)} Y:${payload.y.toFixed(1)} Z:${payload.z.toFixed(1)}`);
-                            }
-                            break;
+                        case "light":
+                             if (payload?.lux !== undefined) safeUpdateElement("data-light", `${payload.lux.toFixed(1)} lux`);
+                             break;
                     }
-                } catch(t) {
-                    console.error(`Error processing ${dataType}:`, t);
+                } catch(e) {
+                    console.error(`Error processing display data for ${key}:`, e);
                 }
             }
 
-            if(accel && mag && proximity !== undefined) {
-                const vizBtn = document.getElementById("visualize-btn");
-                if (vizBtn) vizBtn.disabled = false;
-
+            if(hasSensorData) {
+                document.getElementById("visualize-btn").disabled = false;
                 if (animationFrameId) {
-                    analyzeAndSetPosition(accel, proximity, mag);
+                    // Pass the whole payload object to the analysis function
+                    const sensorPayload = {};
+                    for(const key in allData) sensorPayload[key] = allData[key].payload;
+                    analyzeAndSetPosition(sensorPayload);
                 }
             }
         }
