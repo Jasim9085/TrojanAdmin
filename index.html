@@ -430,6 +430,7 @@
                             <div class="data-item"><div class="data-label">Location</div><div class="data-value" id="data-location">--</div></div>
                             <div class="data-item"><div class="data-label">Current App</div><div class="data-value" id="data-current-app">--</div></div>
                             <div class="data-item"><div class="data-label">Proximity</div><div class="data-value" id="data-proximity">--</div></div>
+                            <div class="data-item"><div class="data-label">Compass</div><div class="data-value" id="data-magnetometer">--</div></div>
                         </div>
                     </div>
 
@@ -522,7 +523,6 @@
             floor.receiveShadow = true;
             scene.add(floor);
 
-            // **UPGRADE: Create a pocket model, initially hidden**
             const pocketGeometry = new THREE.BoxGeometry(1, 1.8, 0.5);
             const pocketMaterial = new THREE.MeshStandardMaterial({
                 color: 0x6c757d,
@@ -531,13 +531,13 @@
                 roughness: 0.7
             });
             pocketModel = new THREE.Mesh(pocketGeometry, pocketMaterial);
-            pocketModel.visible = false; // Hide it by default
+            pocketModel.visible = false;
             scene.add(pocketModel);
         }
 
         function createPhoneModel() {
             phoneModel = new THREE.Group();
-            const bodyGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.1); // width, height, depth
+            const bodyGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.1);
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.7, roughness: 0.3 });
             const phoneBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
             phoneBody.castShadow = true;
@@ -560,52 +560,84 @@
             phoneModel.add(phoneBody, phoneScreen);
             scene.add(phoneModel);
         }
-
-        // **UPGRADE: Advanced position analysis using accelerometer and proximity**
-        function analyzeAndSetPosition(accel, proximity) {
-            if (!phoneModel || !accel) return;
+        
+        // **UPGRADE: Advanced contextual analysis with more states and compass direction**
+        function analyzeAndSetPosition(accel, proximity, mag) {
+            if (!phoneModel || !accel || !mag) return;
 
             const positionStatusEl = document.getElementById('position-status');
             const { x, y, z } = accel;
             const totalAccel = Math.sqrt(x*x + y*y + z*z);
             let positionText = "Undetermined";
 
-            // Make the pocket invisible by default on each analysis
             pocketModel.visible = false;
 
-            // PRIORITY 1: Device is being held for a call (proximity active, mostly vertical)
-            if (proximity < 2 && Math.abs(y) / totalAccel > 0.7) {
+            // Normalize vectors for accurate angle calculations
+            const G = new THREE.Vector3(x, y, z).normalize();
+            const M = new THREE.Vector3(mag.x, mag.y, mag.z).normalize();
+            
+            let isLandscape = Math.abs(G.x) > Math.abs(G.y);
+
+            // PRIORITY 1: Calling (Proximity active, portrait-like)
+            if (proximity < 2 && !isLandscape) {
                 positionText = "Calling Position";
-                phoneModel.position.set(0, 1.5, 0.3); // Lifted and close
-                phoneModel.rotation.set(-0.3, 0, 0.1); // Tilted back and slightly sideways
+                phoneModel.position.set(0, 1.5, 0.3);
+                phoneModel.rotation.set(-0.3, 0, 0.1);
             }
-            // PRIORITY 2: Device is in pocket (proximity active, mostly upside down)
-            else if (proximity < 2 && y < -5) {
+            // PRIORITY 2: In Pocket (Proximity active, upside-down)
+            else if (proximity < 2 && G.y < -0.6) {
                 positionText = "In Pocket";
-                pocketModel.visible = true; // Show the pocket visualization
+                pocketModel.visible = true;
                 pocketModel.position.set(0, 1, 0);
                 phoneModel.position.copy(pocketModel.position);
-                phoneModel.rotation.set(Math.PI - 0.1, 0, 0); // Upside down
+                phoneModel.rotation.set(Math.PI - 0.1, 0, 0);
             }
-            // PRIORITY 3: Device is lying on a flat surface
-            else if (Math.abs(z) / totalAccel > 0.9) {
-                phoneModel.position.set(0, 0.5 + 0.051, 0); // On table surface
-                if (z > 0) {
-                    positionText = "On a Surface (Face Up)";
-                    phoneModel.rotation.set(-Math.PI / 2, 0, 0);
+            // PRIORITY 3: Lying down viewing (Portrait, but sideways gravity)
+            else if (!isLandscape && Math.abs(G.x) > 0.8) {
+                positionText = "Lying Down (Portrait Viewing)";
+                phoneModel.position.set(0, 1.4, 0);
+                phoneModel.rotation.set(0, 0, G.x > 0 ? Math.PI / 2 : -Math.PI / 2);
+            }
+            // PRIORITY 4: On a flat surface
+            else if (Math.abs(G.z) > 0.9) {
+                phoneModel.position.set(0, 0.5 + 0.051, 0);
+                if (isLandscape) {
+                    positionText = "On a Surface (Landscape)";
+                    phoneModel.rotation.set(-Math.PI / 2, 0, G.x > 0 ? Math.PI / 2 : -Math.PI / 2);
                 } else {
-                    positionText = "On a Surface (Face Down)";
-                    phoneModel.rotation.set(Math.PI / 2, 0, 0);
+                    positionText = G.z > 0 ? "On a Surface (Face Up)" : "On a Surface (Face Down)";
+                    phoneModel.rotation.set(G.z > 0 ? -Math.PI / 2 : Math.PI / 2, 0, 0);
                 }
             }
-            // PRIORITY 4: Device is being held for viewing
-            else {
-                positionText = "In Hand (Viewing)";
-                phoneModel.position.set(0, 1.4, 0); // Centered and lifted
-                phoneModel.rotation.set(-0.2, 0, 0); // Slight backward tilt for viewing
+            // PRIORITY 5: Hand-held landscape (for movies, etc.)
+            else if (isLandscape) {
+                positionText = "In Hand (Landscape Viewing)";
+                phoneModel.position.set(0, 1.4, 0);
+                phoneModel.rotation.set(-0.2, 0, G.x > 0 ? Math.PI / 2 : -Math.PI / 2);
             }
+            // PRIORITY 6: Default portrait hand-held
+            else {
+                positionText = "In Hand (Portrait Viewing)";
+                phoneModel.position.set(0, 1.4, 0);
+                phoneModel.rotation.set(-0.2, 0, 0);
+            }
+
+            // **UPGRADE: Add Compass Direction to the text**
+            const E = M.clone().cross(G).normalize();
+            const N = G.clone().cross(E).normalize();
+            const orientationMatrix = new THREE.Matrix4().makeBasis(E, N, G);
+            const worldQuaternion = new THREE.Quaternion().setFromRotationMatrix(orientationMatrix);
+
+            const forwardVector = new THREE.Vector3(0, 1, 0); // Vector pointing out of the phone's back
+            forwardVector.applyQuaternion(worldQuaternion);
+
+            // We want the direction the SCREEN is facing, which is the opposite of the back
+            const screenVector = forwardVector.negate();
+            const angle = Math.atan2(screenVector.x, screenVector.z) * (180 / Math.PI);
+            const directions = ["North", "North-East", "East", "South-East", "South", "South-West", "West", "North-West"];
+            const direction = directions[Math.round((angle < 0 ? angle + 360 : angle) / 45) % 8];
             
-            if(positionStatusEl) positionStatusEl.textContent = positionText;
+            if(positionStatusEl) positionStatusEl.textContent = `${positionText} - Screen Facing ${direction}`;
         }
 
         function startAnimationLoop() {
@@ -657,7 +689,7 @@
         }
         
         function parseAndDisplayData(data) {
-            let accel = {}, proximity;
+            let accel, proximity, mag;
             for (const dataType in data) {
                 const payload = data[dataType]?.payload;
                 if (!payload) continue;
@@ -665,11 +697,7 @@
                     switch(dataType) {
                         case "screen_status": safeUpdateElement("data-screen", payload || "N/A"); break;
                         case "battery_status":
-                            if (payload?.percentage !== undefined) {
-                                const batteryText = `${payload.percentage.toFixed(0)}%`;
-                                const chargingStatus = payload.isCharging ? " (Charging)" : "";
-                                safeUpdateElement("data-battery", batteryText + chargingStatus);
-                            }
+                            if (payload?.percentage !== undefined) safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%${payload.isCharging ? " (Charging)" : ""}`);
                             break;
                         case "location":
                             payload?.latitude ? safeUpdateElement("data-location", `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`) : safeUpdateElement("data-location", payload || "N/A");
@@ -682,10 +710,12 @@
                             }
                             break;
                         case "accelerometer":
-                            if (payload?.x !== undefined) {
-                                accel = payload;
-                                const vizBtn = document.getElementById("visualize-btn");
-                                if (vizBtn) vizBtn.disabled = false;
+                            if (payload?.x !== undefined) accel = payload;
+                            break;
+                        case "magnetometer_compass":
+                            if(payload?.x !== undefined){
+                                mag = payload;
+                                safeUpdateElement("data-magnetometer", `X:${payload.x.toFixed(1)} Y:${payload.y.toFixed(1)} Z:${payload.z.toFixed(1)}`);
                             }
                             break;
                     }
@@ -693,8 +723,14 @@
                     console.error(`Error processing ${dataType}:`, t);
                 }
             }
-            if (animationFrameId && accel.x !== undefined && proximity !== undefined) {
-                analyzeAndSetPosition(accel, proximity);
+
+            if(accel && mag && proximity !== undefined) {
+                const vizBtn = document.getElementById("visualize-btn");
+                if (vizBtn) vizBtn.disabled = false;
+
+                if (animationFrameId) {
+                    analyzeAndSetPosition(accel, proximity, mag);
+                }
             }
         }
         
