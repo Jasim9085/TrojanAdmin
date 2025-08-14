@@ -88,10 +88,12 @@
 
         // --- 3D Visualizer Globals ---
         let scene, camera, renderer, phoneModel;
+        let isVisualizerInitialized = false;
 
         function initVisualizer() {
             const visualizerElement = document.getElementById('visualizer');
-            
+            if (!visualizerElement) return;
+
             // Scene
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf0f0f0);
@@ -103,6 +105,7 @@
             // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(visualizerElement.clientWidth, visualizerElement.clientHeight);
+            visualizerElement.innerHTML = ''; // Clear any error messages
             visualizerElement.appendChild(renderer.domElement);
 
             // Lighting
@@ -121,12 +124,12 @@
             const screenGeometry = new THREE.BoxGeometry(1.35, 2.8, 0.05);
             const screenMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
             const phoneScreen = new THREE.Mesh(screenGeometry, screenMaterial);
-            phoneScreen.position.z = 0.1;
+            phoneScreen.position.z = 0.11; // Slightly forward to avoid z-fighting
 
             const cameraGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.05);
             const cameraMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3 });
             const phoneCamera = new THREE.Mesh(cameraGeometry, cameraMaterial);
-            phoneCamera.position.set(0.3, 1.1, -0.1);
+            phoneCamera.position.set(0.3, 1.1, -0.11); // Slightly back
 
             phoneModel.add(phoneBody);
             phoneModel.add(phoneScreen);
@@ -138,23 +141,19 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            renderer.render(scene, camera);
+            if(renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
         }
         
-        // This function now expects alpha, beta, and gamma for full 3D rotation.
         function updateVisualizer(alpha, beta, gamma) {
             if (phoneModel) {
-                // Convert degrees to radians for three.js
                 const alphaRad = THREE.MathUtils.degToRad(alpha);
                 const betaRad = THREE.MathUtils.degToRad(beta);
                 const gammaRad = THREE.MathUtils.degToRad(gamma);
 
-                // Create a Quaternion from Euler angles. The 'YXZ' order is common for device orientation.
-                const quaternion = new THREE.Quaternion();
                 const euler = new THREE.Euler(betaRad, alphaRad, -gammaRad, 'YXZ');
-                quaternion.setFromEuler(euler);
-
-                phoneModel.setRotationFromQuaternion(quaternion);
+                phoneModel.setRotationFromEuler(euler);
             }
         }
 
@@ -162,7 +161,6 @@
             if (sessionStorage.getItem('isAuthenticated') === 'true') {
                 showAdminPanel();
             }
-            initVisualizer();
         };
 
         function checkUiPassword() {
@@ -190,7 +188,20 @@
             } catch (e) { dropdown.innerHTML = `<option value="">-- Error Loading ${type} --</option>`; }
         }
 
-        function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function showModal(id) {
+            document.getElementById(id).style.display = 'flex';
+            // **FIX:** Initialize the visualizer only when the modal is opened for the first time.
+            if (id === 'visualizer-modal' && !isVisualizerInitialized) {
+                if (typeof THREE !== 'undefined') {
+                    initVisualizer();
+                    isVisualizerInitialized = true;
+                } else {
+                    console.error("Three.js library failed to load. Cannot initialize visualizer.");
+                    document.getElementById('visualizer').innerHTML = '<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D library could not be loaded.</p>';
+                }
+            }
+        }
+        
         function hideModal(id) { document.getElementById(id).style.display = 'none'; }
         
         function startPolling() {
@@ -223,6 +234,8 @@
         }
 
         function parseAndDisplayData(data, isManualTrigger) {
+            let accel = {}, gyro = {}, mag = {};
+
             for (const dataType in data) {
                 const payload = data[dataType].payload;
                 switch(dataType) {
@@ -264,30 +277,29 @@
                         if (typeof payload === 'object' && payload.x !== undefined) {
                             const elementId = `data-${dataType.replace('_compass', '')}`;
                             document.getElementById(elementId).textContent = `X:${payload.x.toFixed(2)} Y:${payload.y.toFixed(2)} Z:${payload.z.toFixed(2)}`;
-                            
-                            // Enable visualization if we have any motion data
                             document.getElementById('visualize-btn').disabled = false;
                             
-                            // For demonstration, we're using accelerometer data to simulate orientation.
-                            // In a real-world scenario, you would use fused data from a device orientation event.
-                            // Example: window.addEventListener('deviceorientation', (event) => {
-                            //   updateVisualizer(event.alpha, event.beta, event.gamma);
-                            // });
-                            if (dataType === "accelerometer") {
-                                const alpha = 0; // No compass data available to determine heading
-                                const beta = (payload.y / 9.8) * 90; // Tilt front/back
-                                const gamma = (payload.x / 9.8) * -90; // Tilt left/right
-                                updateVisualizer(alpha, beta, gamma);
-                            }
+                            if (dataType === "accelerometer") accel = payload;
+                            if (dataType === "gyroscope") gyro = payload;
+                            if (dataType === "magnetometer_compass") mag = payload;
                         }
                         break;
-
                     case "proximity":
                         if(typeof payload === 'object' && payload.distance !== undefined) {
                             document.getElementById('data-proximity').textContent = `${payload.distance} cm`;
                         }
                         break;
                 }
+            }
+
+            // Update the visualizer using the latest sensor data collected in this batch
+            if(accel.x !== undefined){
+                // For now, we continue to use a simplified orientation model.
+                // A true sensor fusion algorithm would combine all three for a more stable result.
+                const alpha = (mag.x !== undefined) ? Math.atan2(mag.y, mag.x) * (180 / Math.PI) : 0;
+                const beta = (accel.y / 9.8) * 90;  // Tilt front/back
+                const gamma = (accel.x / 9.8) * -90; // Tilt left/right
+                updateVisualizer(alpha, beta, gamma);
             }
         }
 
