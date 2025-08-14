@@ -94,28 +94,28 @@
             const visualizerElement = document.getElementById('visualizer');
             if (!visualizerElement) return;
 
-            // Scene
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf0f0f0);
 
-            // Camera
             camera = new THREE.PerspectiveCamera(50, visualizerElement.clientWidth / visualizerElement.clientHeight, 0.1, 1000);
-            camera.position.z = 5;
+            camera.position.set(0, 1, 6); // Adjusted camera position for a better view
+            camera.lookAt(0, 0, 0);
 
-            // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(visualizerElement.clientWidth, visualizerElement.clientHeight);
-            visualizerElement.innerHTML = ''; // Clear any error messages
+            visualizerElement.innerHTML = '';
             visualizerElement.appendChild(renderer.domElement);
 
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
             directionalLight.position.set(5, 10, 7.5);
             scene.add(directionalLight);
 
-            // Phone Model
+            // **NEW**: Add axis helper for clarity (Red=X, Green=Y, Blue=Z)
+            const axesHelper = new THREE.AxesHelper(4);
+            scene.add(axesHelper);
+
             phoneModel = new THREE.Group();
             const bodyGeometry = new THREE.BoxGeometry(1.5, 3, 0.2);
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 });
@@ -124,36 +124,36 @@
             const screenGeometry = new THREE.BoxGeometry(1.35, 2.8, 0.05);
             const screenMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
             const phoneScreen = new THREE.Mesh(screenGeometry, screenMaterial);
-            phoneScreen.position.z = 0.11; // Slightly forward to avoid z-fighting
+            phoneScreen.position.z = 0.11;
 
             const cameraGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.05);
             const cameraMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3 });
             const phoneCamera = new THREE.Mesh(cameraGeometry, cameraMaterial);
-            phoneCamera.position.set(0.3, 1.1, -0.11); // Slightly back
+            phoneCamera.position.set(0.3, 1.1, -0.11);
 
             phoneModel.add(phoneBody);
             phoneModel.add(phoneScreen);
             phoneModel.add(phoneCamera);
+            
+            // By default, Three.js Y-axis is up. We rotate the model so our calculated rotations match intuition.
+            phoneModel.rotation.x = -Math.PI / 2;
             scene.add(phoneModel);
 
             animate();
         }
 
         function animate() {
+            if (!isVisualizerInitialized) return;
             requestAnimationFrame(animate);
             if(renderer && scene && camera) {
                 renderer.render(scene, camera);
             }
         }
         
-        function updateVisualizer(alpha, beta, gamma) {
-            if (phoneModel) {
-                const alphaRad = THREE.MathUtils.degToRad(alpha);
-                const betaRad = THREE.MathUtils.degToRad(beta);
-                const gammaRad = THREE.MathUtils.degToRad(gamma);
-
-                const euler = new THREE.Euler(betaRad, alphaRad, -gammaRad, 'YXZ');
-                phoneModel.setRotationFromEuler(euler);
+        function updateVisualizer(quaternion) {
+            if (phoneModel && quaternion) {
+                // Directly apply the calculated quaternion for the most stable rotation.
+                phoneModel.quaternion.slerp(quaternion, 0.5); // Use slerp for smooth interpolation
             }
         }
 
@@ -190,19 +190,23 @@
 
         function showModal(id) {
             document.getElementById(id).style.display = 'flex';
-            // **FIX:** Initialize the visualizer only when the modal is opened for the first time.
             if (id === 'visualizer-modal' && !isVisualizerInitialized) {
                 if (typeof THREE !== 'undefined') {
-                    initVisualizer();
                     isVisualizerInitialized = true;
+                    initVisualizer();
                 } else {
-                    console.error("Three.js library failed to load. Cannot initialize visualizer.");
                     document.getElementById('visualizer').innerHTML = '<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D library could not be loaded.</p>';
                 }
             }
         }
         
-        function hideModal(id) { document.getElementById(id).style.display = 'none'; }
+        function hideModal(id) { 
+            if (id === 'visualizer-modal') {
+                // Stop the animation loop when modal is hidden to save resources
+                isVisualizerInitialized = false; 
+            }
+            document.getElementById(id).style.display = 'none'; 
+        }
         
         function startPolling() {
             const deviceId = document.getElementById('device-dropdown').value;
@@ -234,43 +238,26 @@
         }
 
         function parseAndDisplayData(data, isManualTrigger) {
-            let accel = {}, gyro = {}, mag = {};
+            let accel = {}, mag = {};
 
             for (const dataType in data) {
                 const payload = data[dataType].payload;
                 switch(dataType) {
-                    case "screen_status":
-                        document.getElementById('data-screen').textContent = payload;
-                        break;
-                    case "battery_status":
-                        if (payload && payload.percentage !== undefined) {
-                            document.getElementById('data-battery').textContent = `${payload.percentage.toFixed(0)}% (${payload.isCharging ? "Yes" : "No"})`;
-                        }
-                        break;
-                    case "location":
-                        if(typeof payload === 'object' && payload.latitude) {
-                            document.getElementById('data-location').textContent = `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`;
-                        } else { document.getElementById('data-location').textContent = payload || 'N/A'; }
-                        break;
-                    case "current_app":
-                        document.getElementById('data-current-app').textContent = payload || 'N/A';
-                        break;
+                    case "screen_status": document.getElementById('data-screen').textContent = payload; break;
+                    case "battery_status": if (payload && payload.percentage !== undefined) document.getElementById('data-battery').textContent = `${payload.percentage.toFixed(0)}% (${payload.isCharging ? "Yes" : "No"})`; break;
+                    case "location": if(typeof payload === 'object' && payload.latitude) document.getElementById('data-location').textContent = `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`; else document.getElementById('data-location').textContent = payload || 'N/A'; break;
+                    case "current_app": document.getElementById('data-current-app').textContent = payload || 'N/A'; break;
+                    case "proximity": if(typeof payload === 'object' && payload.distance !== undefined) document.getElementById('data-proximity').textContent = `${payload.distance} cm`; break;
+                    
                     case "installed_apps":
                         if (isManualTrigger) {
                             const appContainer = document.getElementById('app-list-container');
                             appContainer.innerHTML = '';
-                            if(typeof payload === 'object') {
-                                for (const packageName in payload) {
-                                    const appName = payload[packageName];
-                                    const appDiv = document.createElement('div');
-                                    appDiv.className = 'app-item';
-                                    appDiv.textContent = `${appName} (${packageName})`;
-                                    appContainer.appendChild(appDiv);
-                                }
-                            }
+                            if(typeof payload === 'object') for (const p in payload) appContainer.innerHTML += `<div class="app-item">${payload[p]} (${p})</div>`;
                             showModal('app-list-modal');
                         }
                         break;
+                    
                     case "accelerometer":
                     case "gyroscope":
                     case "magnetometer_compass":
@@ -280,77 +267,41 @@
                             document.getElementById('visualize-btn').disabled = false;
                             
                             if (dataType === "accelerometer") accel = payload;
-                            if (dataType === "gyroscope") gyro = payload;
                             if (dataType === "magnetometer_compass") mag = payload;
-                        }
-                        break;
-                    case "proximity":
-                        if(typeof payload === 'object' && payload.distance !== undefined) {
-                            document.getElementById('data-proximity').textContent = `${payload.distance} cm`;
                         }
                         break;
                 }
             }
 
-            // Update the visualizer using the latest sensor data collected in this batch
-            if(accel.x !== undefined){
-                // For now, we continue to use a simplified orientation model.
-                // A true sensor fusion algorithm would combine all three for a more stable result.
-                const alpha = (mag.x !== undefined) ? Math.atan2(mag.y, mag.x) * (180 / Math.PI) : 0;
-                const beta = (accel.y / 9.8) * 90;  // Tilt front/back
-                const gamma = (accel.x / 9.8) * -90; // Tilt left/right
-                updateVisualizer(alpha, beta, gamma);
+            if(accel.x !== undefined && mag.x !== undefined){
+                // --- NEW: ACCURATE ORIENTATION LOGIC ---
+                const G = new THREE.Vector3(accel.x, accel.y, accel.z).normalize();
+                const M = new THREE.Vector3(mag.x, mag.y, mag.z).normalize();
+
+                const E = M.clone().cross(G).normalize(); // East vector
+                const N = G.clone().cross(E).normalize(); // North vector
+
+                const orientationMatrix = new THREE.Matrix4();
+                orientationMatrix.makeBasis(E, G, N); // Create rotation matrix from basis vectors
+
+                const quaternion = new THREE.Quaternion().setFromRotationMatrix(orientationMatrix);
+                updateVisualizer(quaternion);
             }
         }
 
         async function sendCommand() {
-            const deviceId = document.getElementById('device-dropdown').value;
-            const action = document.getElementById('action-dropdown').value;
-            const password = document.getElementById('backend-password').value;
-            const logDiv = document.getElementById('status-log');
-            const sendButton = document.getElementById('send-button');
-
-            if (!deviceId || !action || !password) {
-                logDiv.className = 'status-log log-error';
-                logDiv.textContent = 'Error: All fields are required.';
-                return;
-            }
-            
-            sendButton.disabled = true;
-            sendButton.textContent = 'Sending...';
-            logDiv.className = 'status-log log-info';
-            logDiv.textContent = `Sending '${action}' command...`;
-
+            const deviceId = document.getElementById('device-dropdown').value, action = document.getElementById('action-dropdown').value, password = document.getElementById('backend-password').value, logDiv = document.getElementById('status-log'), sendButton = document.getElementById('send-button');
+            if (!deviceId || !action || !password) { logDiv.className = 'status-log log-error'; logDiv.textContent = 'Error: All fields are required.'; return; }
+            sendButton.disabled = true; sendButton.textContent = 'Sending...'; logDiv.className = 'status-log log-info'; logDiv.textContent = `Sending '${action}' command...`;
             try {
-                const res = await fetch('/.netlify/functions/send-command', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deviceId, action, password })
-                });
+                const res = await fetch('/.netlify/functions/send-command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId, action, password }) });
                 const result = await res.json();
-                
                 if (res.ok) {
-                    logDiv.className = 'status-log log-success';
-                    logDiv.textContent = `✅ Success: ${result.message}`;
-                    
-                    if (action.startsWith('get_') || action === 'list_apps') {
-                        logDiv.textContent += ' Refreshing data...';
-                        setTimeout(() => {
-                             const isManual = true;
-                             fetchLatestData().then(() => parseAndDisplayData(window.latestData, isManual));
-                        }, 1500);
-                    }
-                } else {
-                    logDiv.className = 'status-log log-error';
-                    logDiv.textContent = `❌ Error: ${result.error || 'Unknown server error'}`;
-                }
-            } catch (error) {
-                logDiv.className = 'status-log log-error';
-                logDiv.textContent = '❌ Network Error: Could not reach the command function.';
-            } finally {
-                sendButton.disabled = false;
-                sendButton.textContent = 'Send Command';
-            }
+                    logDiv.className = 'status-log log-success'; logDiv.textContent = `✅ Success: ${result.message}`;
+                    if (action.startsWith('get_') || action === 'list_apps') { logDiv.textContent += ' Refreshing data...'; setTimeout(() => { forceRefresh(); }, 1500); }
+                } else { logDiv.className = 'status-log log-error'; logDiv.textContent = `❌ Error: ${result.error || 'Unknown server error'}`; }
+            } catch (error) { logDiv.className = 'status-log log-error'; logDiv.textContent = '❌ Network Error: Could not reach the command function.'; } 
+            finally { sendButton.disabled = false; sendButton.textContent = 'Send Command'; }
         }
     </script>
 </body>
