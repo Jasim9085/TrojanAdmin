@@ -1,3 +1,5 @@
+// netlify/functions/submit-data.js
+
 const { getStore } = require("@netlify/blobs");
 
 // Load secrets from environment variables
@@ -16,22 +18,23 @@ exports.handler = async function(event) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing required data fields.' }) };
     }
 
-    // Initialize the store manually with credentials
     const store = getStore({
-        name: "device-feedback", // Use a consistent store name
+        name: "device-feedback",
         siteID: NETLIFY_SITE_ID,
         token: NETLIFY_ACCESS_TOKEN
     });
 
-    // Create a unique key for each piece of data (e.g., "someID_battery_status")
     const key = `${deviceId}_${dataType}`;
     
-    // Save the data under the specific key
-    await store.setJSON(key, {
-        dataType: dataType,
-        payload: payload,
-        timestamp: new Date().toISOString()
-    });
+    // --- THIS IS THE CRITICAL CHANGE ---
+    // We now store the payload DIRECTLY.
+    // store.setJSON() is smart:
+    // - If the payload is a JSON object (like battery status), it stores it as JSON.
+    // - If the payload is a giant string (like a Base64 image), it stores it as a JSON string.
+    // This makes it perfectly compatible with what get-status.js and the dashboard expect.
+    await store.setJSON(key, payload);
+
+    console.log(`[INFO] Successfully stored data for key: ${key}`);
 
     return {
       statusCode: 200,
@@ -39,7 +42,8 @@ exports.handler = async function(event) {
     };
 
   } catch (error) {
-    console.error("Submit Data Error:", error);
+    // Provide more detailed logging for debugging
+    console.error(`Submit Data Error for dataType '${event.body.dataType}':`, error);
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
 };
