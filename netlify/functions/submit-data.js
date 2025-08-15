@@ -2,7 +2,6 @@
 
 const { getStore } = require("@netlify/blobs");
 
-// Load secrets from environment variables
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
 const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 
@@ -25,25 +24,18 @@ exports.handler = async function(event) {
     });
 
     const key = `${deviceId}_${dataType}`;
-    
-    // --- THIS IS THE CRITICAL CHANGE ---
-    // We now store the payload DIRECTLY.
-    // store.setJSON() is smart:
-    // - If the payload is a JSON object (like battery status), it stores it as JSON.
-    // - If the payload is a giant string (like a Base64 image), it stores it as a JSON string.
-    // This makes it perfectly compatible with what get-status.js and the dashboard expect.
+
+    // CRITICAL: Store the raw payload directly. setJSON handles both objects and strings correctly.
     await store.setJSON(key, payload);
 
-    console.log(`[INFO] Successfully stored data for key: ${key}`);
-
+    console.log(`[SUCCESS] Stored data for key: ${key}`);
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "Data stored successfully." })
     };
 
   } catch (error) {
-    // Provide more detailed logging for debugging
-    console.error(`Submit Data Error for dataType '${event.body.dataType}':`, error);
+    console.error(`[ERROR] Failed to store data. Key: ${event.body ? `${event.body.deviceId}_${event.body.dataType}` : 'Unknown'}. Error: ${error.message}`);
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
 };
